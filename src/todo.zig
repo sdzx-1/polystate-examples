@@ -192,7 +192,7 @@ const Todo = enum {
                         .Term => |v| @tagName(v),
                         .Fun => |val| @tagName(val.fun),
                     };
-                    const str = std.fmt.bufPrintZ(&buf, "{s}", .{nst}) catch unreachable;
+                    const str = std.fmt.bufPrintZ(&buf, "action({s})", .{nst}) catch unreachable;
                     _ = zgui.begin(str, .{ .flags = .{
                         .no_collapse = true,
                         .no_move = true,
@@ -325,7 +325,7 @@ const Todo = enum {
                     return .Exit;
 
                 {
-                    _ = zgui.begin("TodoList", .{ .flags = .{
+                    _ = zgui.begin("main", .{ .flags = .{
                         .no_collapse = true,
 
                         .no_move = true,
