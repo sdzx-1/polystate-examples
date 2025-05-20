@@ -23,11 +23,14 @@ pub fn build(b: *std.Build) void {
 
     while (iter.next() catch unreachable) |entry| {
         const ext = std.fs.path.extension(entry.name);
-        if (entry.kind == .file and std.mem.eql(u8, ext, ".zig")) {
-            const exe_name = entry.name[0 .. entry.name.len - 4];
+        if (entry.kind == .file and
+            std.mem.eql(u8, ext, ".zig") and
+            std.mem.startsWith(u8, entry.name, "exe-"))
+        {
+            const exe_name = entry.name[4 .. entry.name.len - 4];
 
             const exe_mod = b.createModule(.{
-                .root_source_file = b.path(b.fmt("src/{s}.zig", .{exe_name})),
+                .root_source_file = b.path(b.fmt("src/{s}", .{entry.name})),
                 .target = target,
                 .optimize = optimize,
                 .imports = &.{
