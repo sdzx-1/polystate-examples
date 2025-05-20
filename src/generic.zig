@@ -50,7 +50,7 @@ pub fn are_you_sureST(
 
         fn genMsg(gst: *const GST) @This() {
             const window = gst.window;
-            var buf: [30]u8 = @splat(0);
+            var buf: [60]u8 = @splat(0);
             while (true) {
                 clear_and_init(window);
                 defer {
@@ -103,7 +103,15 @@ pub fn actionST(
     enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
 ) type {
     return union(enum) {
-        OK: typedFsm.Witness(T, st, GST, enter_fn),
+        OK: typedFsm.Witness(
+            T,
+            typedFsm.sdzx(T).C(
+                T.are_you_sure,
+                &.{ st, typedFsm.sdzx(T).C(T.action, &.{st}) },
+            ),
+            GST,
+            enter_fn,
+        ),
 
         pub fn handler(gst: *GST) void {
             switch (genMsg(gst)) {
