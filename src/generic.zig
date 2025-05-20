@@ -8,6 +8,94 @@ const gl = zopengl.bindings;
 const Window = glfw.Window;
 const content_dir = @import("build_options").content_dir;
 
+pub const AreYouSure = struct {
+    yes: [20:0]u8 = blk: {
+        var tmp: [20:0]u8 = @splat(0);
+        tmp[0] = 'Y';
+        tmp[1] = 'E';
+        tmp[2] = 'S';
+        break :blk tmp;
+    },
+
+    no: [20:0]u8 = blk: {
+        var tmp: [20:0]u8 = @splat(0);
+        tmp[0] = 'N';
+        tmp[1] = 'O';
+        break :blk tmp;
+    },
+
+    pub fn render(self: *@This()) void {
+        _ = zgui.inputText("yes", .{ .buf = &self.yes });
+        _ = zgui.inputText("no", .{ .buf = &self.no });
+    }
+};
+
+pub fn are_you_sureST(
+    T: type,
+    yes: typedFsm.sdzx(T),
+    no: typedFsm.sdzx(T),
+    GST: type,
+    enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
+) type {
+    return union(enum) {
+        Yes: typedFsm.Witness(T, yes, GST, enter_fn),
+        No: typedFsm.Witness(T, no, GST, enter_fn),
+
+        pub fn handler(gst: *GST) void {
+            switch (genMsg(gst)) {
+                .Yes => |wit| wit.handler(gst),
+                .No => |wit| wit.handler(gst),
+            }
+        }
+
+        fn genMsg(gst: *const GST) @This() {
+            const window = gst.window;
+            var buf: [30]u8 = @splat(0);
+            while (true) {
+                clear_and_init(window);
+                defer {
+                    zgui.backend.draw();
+                    window.swapBuffers();
+                }
+
+                const str = std.fmt.bufPrintZ(&buf, "are_you_sure({}, {})", .{ yes, no }) catch unreachable;
+                _ = zgui.begin(str, .{ .flags = .{
+                    .no_collapse = true,
+                    .no_move = true,
+                    .no_resize = true,
+                } });
+
+                defer zgui.end();
+
+                if (zgui.button(&gst.are_you_sure.yes, .{})) {
+                    return .Yes;
+                }
+
+                if (zgui.button(&gst.are_you_sure.no, .{})) {
+                    return .No;
+                }
+            }
+        }
+    };
+}
+
+pub const Action = struct {
+    ok: [20:0]u8 = blk: {
+        var tmp: [20:0]u8 = @splat(0);
+        tmp[0] = 'O';
+        tmp[1] = 'K';
+        break :blk tmp;
+    },
+    color: [3]f32 = .{ 0, 0.2, 0.4 },
+
+    pub fn render(self: *@This()) void {
+        _ = zgui.inputText("title", .{
+            .buf = &self.ok,
+        });
+        _ = zgui.colorPicker3("color", .{ .col = &self.color });
+    }
+};
+
 pub fn actionST(
     T: type,
     st: typedFsm.sdzx(T),

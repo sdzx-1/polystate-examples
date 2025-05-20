@@ -19,8 +19,6 @@ pub fn main() !void {
     std.debug.print("{}\n", .{graph});
     // -------------------------------------
     var gst = GST.init(gpa, "TodoList", window);
-    gst.action.ok[0] = 'O';
-    gst.action.ok[1] = 'K';
     const wit = Todo.Wit(Todo.main){};
     wit.handler_normal(&gst);
 }
@@ -29,18 +27,6 @@ const Entry = struct {
     id: i32,
     title: []const u8,
     completed: bool,
-};
-
-const Action = struct {
-    ok: [20:0]u8 = @splat(0),
-    color: [3]f32 = .{ 0, 0, 1 },
-
-    pub fn render(self: *@This()) void {
-        _ = zgui.inputText("title", .{
-            .buf = &self.ok,
-        });
-        _ = zgui.colorPicker3("color", .{ .col = &self.color });
-    }
 };
 
 const TmpEntry = struct {
@@ -65,7 +51,8 @@ const GST = struct {
     //
     modify: TmpEntry = .{},
     add: TmpEntry = .{},
-    action: Action = .{},
+    action: generic.Action = .{},
+    are_you_sure: generic.AreYouSure = .{},
 
     pub fn init(gpa: std.mem.Allocator, title: []const u8, window: *Window) GST {
         return .{
@@ -105,6 +92,7 @@ const Todo = enum {
     add,
     modify,
     action, //action add
+    are_you_sure,
 
     fn enter_fn(cst: typedFsm.sdzx(@This()), gst: *const GST) void {
         std.debug.print("cst: {}, gst: {any}\n", .{ cst, gst });
@@ -120,6 +108,10 @@ const Todo = enum {
             std.debug.print("gst: {any}\n", .{gst});
         }
     };
+
+    pub fn are_you_sureST(yes: typedFsm.sdzx(Todo), no: typedFsm.sdzx(Todo)) type {
+        return generic.are_you_sureST(Todo, yes, no, GST, enter_fn);
+    }
 
     pub fn actionST(st: typedFsm.sdzx(Todo)) type {
         return generic.actionST(Todo, st, GST, enter_fn);
@@ -188,7 +180,7 @@ const Todo = enum {
     };
 
     pub const mainST = union(enum) {
-        Exit: Wit(Todo.exit),
+        Exit: Wit(.{ Todo.are_you_sure, Todo.exit, Todo.main }),
         Add: Wit(.{ Todo.action, Todo.add }),
         Delete: struct { wit: Wit(Todo.main) = .{}, id: i32 },
         Modify: struct { wit: Wit(.{ Todo.action, Todo.modify }) = .{}, id: i32 },
@@ -240,6 +232,10 @@ const Todo = enum {
                         .no_resize = true,
                     } });
                     defer zgui.end();
+
+                    if (zgui.button("Exit", .{})) {
+                        return .Exit;
+                    }
 
                     if (zgui.button("Add", .{})) {
                         return .Add;
