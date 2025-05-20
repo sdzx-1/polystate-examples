@@ -3,76 +3,15 @@ const typedFsm = @import("typed_fsm");
 const Witness = typedFsm.Witness;
 const zgui = @import("zgui");
 const glfw = @import("zglfw");
-const zopengl = @import("zopengl");
-
-const content_dir = @import("build_options").content_dir;
-const window_titlw = "ATM-EXAMPLE";
-const gl = zopengl.bindings;
-
+const generic = @import("generic.zig");
 const Window = glfw.Window;
-
-fn init(window: *Window) void {
-    glfw.pollEvents();
-    gl.clearBufferfv(gl.COLOR, 0, &[_]f32{ 0.2, 0.2, 0, 1.0 });
-    const fb_size = window.getFramebufferSize();
-    zgui.backend.newFrame(@intCast(fb_size[0]), @intCast(fb_size[1]));
-    zgui.setNextWindowPos(.{ .x = 0, .y = 0 });
-    zgui.setNextWindowSize(.{
-        .w = @floatFromInt(fb_size[0]),
-        .h = @floatFromInt(fb_size[1]),
-    });
-}
 
 pub fn main() anyerror!void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa = gpa_instance.allocator();
 
-    try glfw.init();
-    defer glfw.terminate();
-
-    {
-        var buffer: [1024]u8 = undefined;
-        const path = std.fs.selfExeDirPath(buffer[0..]) catch ".";
-        std.posix.chdir(path) catch {};
-    }
-
-    const gl_major = 4;
-    const gl_minor = 0;
-
-    glfw.windowHint(.context_version_major, gl_major);
-    glfw.windowHint(.context_version_minor, gl_minor);
-    glfw.windowHint(.opengl_profile, .opengl_core_profile);
-    glfw.windowHint(.opengl_forward_compat, true);
-    glfw.windowHint(.client_api, .opengl_api);
-    glfw.windowHint(.doublebuffer, true);
-
-    const window = try glfw.Window.create(800, 400, window_titlw, null);
-    defer window.destroy();
-
-    glfw.makeContextCurrent(window);
-    glfw.swapInterval(1);
-
-    try zopengl.loadCoreProfile(glfw.getProcAddress, gl_major, gl_minor);
-
-    zgui.init(gpa);
-    defer zgui.deinit();
-
-    const scale_factor = scale_factor: {
-        const scale = window.getContentScale();
-        break :scale_factor @max(scale[0], scale[1]);
-    };
-
-    _ = zgui.io.addFontFromFileWithConfig(
-        content_dir ++ "FiraMono.ttf",
-        std.math.floor(22.0 * scale_factor),
-        null,
-        null,
-    );
-
-    zgui.getStyle().scaleAllSizes(scale_factor);
-
-    zgui.backend.init(window);
-    defer zgui.backend.deinit();
+    const window = try generic.init_zgui(gpa, "ATM");
+    defer generic.deinit_zgui(window);
 
     var ist = Atm.State.init(window);
 
@@ -136,7 +75,7 @@ pub const Atm = enum {
 
         fn genMsg(window: *Window) @This() {
             while (true) {
-                init(window);
+                generic.clear_and_init(window);
                 defer {
                     zgui.backend.draw();
                     window.swapBuffers();
@@ -181,7 +120,7 @@ pub const Atm = enum {
             fn genMsg(window: *Window, pin: []const u8) @This() {
                 var tmpPin: [4:0]u8 = .{ 0, 0, 0, 0 };
                 while (true) {
-                    init(window);
+                    generic.clear_and_init(window);
                     defer {
                         zgui.backend.draw();
                         window.swapBuffers();
@@ -238,7 +177,7 @@ pub const Atm = enum {
         fn genMsg(window: *Window, amount: usize) @This() {
             var dispVal: i32 = @divTrunc(@as(i32, @intCast(amount)), 2);
             while (true) {
-                init(window);
+                generic.clear_and_init(window);
                 defer {
                     zgui.backend.draw();
                     window.swapBuffers();
