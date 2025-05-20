@@ -29,11 +29,14 @@ pub const Atm = enum {
     ready,
     checkPin, // checkPin(session, checkPin(session, checkPin(session, ready)))
     session,
+    are_you_sure,
 
     pub const State = struct {
         pin: [4]u8 = .{ 1, 2, 3, 4 },
         amount: usize = 10_0000,
         window: *Window,
+        //
+        are_you_sure: generic.AreYouSure = .{},
 
         pub fn init(win: *Window) @This() {
             return .{ .window = win };
@@ -55,6 +58,10 @@ pub const Atm = enum {
         return typedFsm.Witness(@This(), typedFsm.val_to_sdzx(@This(), val), State, prinet_enter_state);
     }
 
+    pub fn are_you_sureST(yes: typedFsm.sdzx(Atm), no: typedFsm.sdzx(Atm)) type {
+        return generic.are_you_sureST(Atm, yes, no, State, prinet_enter_state);
+    }
+
     pub const exitST = union(enum) {
         pub fn handler(ist: *State) void {
             std.debug.print("exit\n", .{});
@@ -64,7 +71,7 @@ pub const Atm = enum {
 
     pub const readyST = union(enum) {
         InsertCard: EWitFn(.{ Atm.checkPin, Atm.session, .{ Atm.checkPin, Atm.session, .{ Atm.checkPin, Atm.session, Atm.ready } } }),
-        Exit: EWit(.exit),
+        Exit: EWitFn(.{ Atm.are_you_sure, Atm.exit, Atm.ready }),
 
         pub fn handler(ist: *State) void {
             switch (genMsg(ist.window)) {
