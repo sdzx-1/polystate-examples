@@ -4,8 +4,8 @@ Examples for typed-fsm, Requires the [latest zig compiler](https://ziglang.org/d
 # examples
 
 ## atm
-![atm_graph](data/atm_graph.zig)
+![atm_graph](data/atm_graph.svg)
 
 ## TodoList
-![todo_graph](data/todoe_graph.zig)
+![todo_graph](data/todo_graph.svg)
 
