@@ -103,7 +103,7 @@ pub fn actionST(
     enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
 ) type {
     return union(enum) {
-        OK: typedFsm.Witness(
+        AreYouSure: typedFsm.Witness(
             T,
             typedFsm.sdzx(T).C(
                 T.are_you_sure,
@@ -112,10 +112,12 @@ pub fn actionST(
             GST,
             enter_fn,
         ),
+        OK: typedFsm.Witness(T, st, GST, enter_fn),
 
         pub fn handler(gst: *GST) void {
             switch (genMsg(gst)) {
                 .OK => |wit| wit.handler(gst),
+                .AreYouSure => |wit| wit.handler(gst),
             }
         }
 
@@ -152,6 +154,10 @@ pub fn actionST(
                 defer zgui.popStyleColor(.{});
                 if (zgui.button(&gst.action.ok, .{})) {
                     return .OK;
+                }
+
+                if (zgui.button("Are You Sure!", .{})) {
+                    return .AreYouSure;
                 }
             }
         }
