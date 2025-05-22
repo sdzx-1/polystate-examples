@@ -180,7 +180,7 @@ const Todo = enum {
     };
 
     pub const mainST = union(enum) {
-        Exit: Wit(.{ Todo.are_you_sure, Todo.exit, Todo.main }),
+        Exit: Wit(.{ Todo.action, .{ Todo.are_you_sure, Todo.exit, Todo.main } }),
         Add: Wit(.{ Todo.action, Todo.add }),
         Delete: struct { wit: Wit(Todo.main) = .{}, id: i32 },
         Modify: struct { wit: Wit(.{ Todo.action, Todo.modify }) = .{}, id: i32 },
