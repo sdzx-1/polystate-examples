@@ -50,7 +50,7 @@ pub fn are_you_sureST(
 
         fn genMsg(gst: *const GST) @This() {
             const window = gst.window;
-            var buf: [60]u8 = @splat(0);
+            var buf: [360]u8 = @splat(0);
             while (true) {
                 clear_and_init(window);
                 defer {
