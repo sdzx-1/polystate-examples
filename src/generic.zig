@@ -67,10 +67,14 @@ pub fn are_you_sureST(
 
                 defer zgui.end();
 
+                zgui.pushStrId("are_you_sure yes");
+                defer zgui.popId();
                 if (zgui.button(&gst.are_you_sure.yes, .{})) {
                     return .Yes;
                 }
 
+                zgui.pushStrId("are_you_sure no");
+                defer zgui.popId();
                 if (zgui.button(&gst.are_you_sure.no, .{})) {
                     return .No;
                 }
@@ -152,6 +156,9 @@ pub fn actionST(
                     1,
                 } });
                 defer zgui.popStyleColor(.{});
+
+                zgui.pushStrId("action ok");
+                defer zgui.popId();
                 if (zgui.button(&gst.action.ok, .{})) {
                     return .OK;
                 }
