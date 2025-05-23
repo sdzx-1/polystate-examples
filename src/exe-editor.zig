@@ -10,6 +10,12 @@ pub fn main() anyerror!void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa = gpa_instance.allocator();
 
+    // -------------------------------------
+    var graph = typedFsm.Graph.init;
+    try typedFsm.generate_graph(gpa, Editor, &graph);
+    std.debug.print("{}\n", .{graph});
+    // -------------------------------------
+
     const window = try generic.init_zgui(gpa, "editor");
     defer generic.deinit_zgui(window);
 

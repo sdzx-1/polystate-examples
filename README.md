@@ -12,3 +12,5 @@ Examples for typed-fsm, Requires the [latest zig compiler](https://ziglang.org/d
 ## TodoList
 ![todo_graph](data/todo_graph.svg)
 
+## Editor
+![editor_graph](data/editor_graph.svg)
