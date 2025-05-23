@@ -91,7 +91,7 @@ const Todo = enum {
     main,
     add,
     modify,
-    action, //action add
+    action, //action add add
     are_you_sure,
 
     fn enter_fn(cst: typedFsm.sdzx(@This()), gst: *const GST) void {
@@ -113,8 +113,8 @@ const Todo = enum {
         return generic.are_you_sureST(Todo, yes, no, GST, enter_fn);
     }
 
-    pub fn actionST(st: typedFsm.sdzx(Todo)) type {
-        return generic.actionST(Todo, st, GST, enter_fn);
+    pub fn actionST(mst: typedFsm.sdzx(Todo), jst: typedFsm.sdzx(Todo)) type {
+        return generic.actionST(Todo, mst, jst, GST, enter_fn);
     }
 
     pub const modifyST = union(enum) {
@@ -181,14 +181,18 @@ const Todo = enum {
 
     pub const mainST = union(enum) {
         Exit: Wit(.{ Todo.are_you_sure, Todo.exit, Todo.main }),
-        Add: Wit(.{ Todo.action, Todo.add }),
+        Add: Wit(.{ Todo.action, Todo.add, Todo.add }),
         Delete: struct { wit: Wit(Todo.main) = .{}, id: i32 },
-        Modify: struct { wit: Wit(.{ Todo.action, Todo.modify }) = .{}, id: i32 },
+        Modify: struct { wit: Wit(.{ Todo.action, Todo.modify, Todo.modify }) = .{}, id: i32 },
+        ModifyAction: Wit(.{ Todo.action, Todo.action, Todo.main }),
+        ModifyAreYouSure: Wit(.{ Todo.action, Todo.are_you_sure, Todo.main }),
 
         pub fn handler(gst: *GST) void {
             switch (genMsg(gst)) {
                 .Exit => |wit| wit.handler(gst),
                 .Add => |wit| wit.handler(gst),
+                .ModifyAction => |wit| wit.handler(gst),
+                .ModifyAreYouSure => |wit| wit.handler(gst),
                 .Delete => |val| {
                     gst.delete(val.id) catch unreachable;
                     val.wit.handler(gst);
@@ -237,6 +241,14 @@ const Todo = enum {
 
                     if (zgui.button("Add", .{})) {
                         return .Add;
+                    }
+
+                    if (zgui.button("Modify Action", .{})) {
+                        return .ModifyAction;
+                    }
+
+                    if (zgui.button("Modify Are You Sure", .{})) {
+                        return .ModifyAreYouSure;
                     }
 
                     _ = zgui.beginTable("TodoList", .{

@@ -23,10 +23,12 @@ pub const AreYouSure = struct {
         tmp[1] = 'O';
         break :blk tmp;
     },
+    color: [3]f32 = .{ 0, 0.2, 0.4 },
 
     pub fn render(self: *@This()) void {
         _ = zgui.inputText("yes", .{ .buf = &self.yes });
         _ = zgui.inputText("no", .{ .buf = &self.no });
+        _ = zgui.colorPicker3("color", .{ .col = &self.color });
     }
 };
 
@@ -67,6 +69,14 @@ pub fn are_you_sureST(
 
                 defer zgui.end();
 
+                zgui.pushStyleColor4f(.{ .idx = .button, .c = .{
+                    gst.are_you_sure.color[0],
+                    gst.are_you_sure.color[1],
+                    gst.are_you_sure.color[2],
+                    1,
+                } });
+                defer zgui.popStyleColor(.{});
+
                 zgui.pushStrId("are_you_sure yes");
                 defer zgui.popId();
                 if (zgui.button(&gst.are_you_sure.yes, .{})) {
@@ -105,12 +115,13 @@ pub const Action = struct {
 
 pub fn actionST(
     T: type,
-    st: typedFsm.sdzx(T),
+    mst: typedFsm.sdzx(T),
+    jst: typedFsm.sdzx(T),
     GST: type,
     enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
 ) type {
     return union(enum) {
-        OK: typedFsm.Witness(T, st, GST, enter_fn),
+        OK: typedFsm.Witness(T, jst, GST, enter_fn),
 
         pub fn handler(gst: *GST) void {
             switch (genMsg(gst)) {
@@ -128,7 +139,7 @@ pub fn actionST(
                     window.swapBuffers();
                 }
 
-                const nst = switch (st) {
+                const nst = switch (mst) {
                     .Term => |v| @tagName(v),
                     .Fun => |val| @tagName(val.fun),
                 };
@@ -191,7 +202,7 @@ pub fn init_zgui(gpa: std.mem.Allocator, window_title: [:0]const u8) !*Window {
     glfw.windowHint(.client_api, .opengl_api);
     glfw.windowHint(.doublebuffer, true);
 
-    const window = try glfw.Window.create(1000, 800, window_title, null);
+    const window = try glfw.Window.create(1000, 900, window_title, null);
 
     glfw.makeContextCurrent(window);
     glfw.swapInterval(1);
