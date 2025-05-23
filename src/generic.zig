@@ -78,6 +78,9 @@ pub fn are_you_sureST(
                 if (zgui.button(&gst.are_you_sure.no, .{})) {
                     return .No;
                 }
+
+                if (window.getKey(.y) == .press) return .Yes;
+                if (window.getKey(.n) == .press) return .No;
             }
         }
     };
@@ -107,21 +110,11 @@ pub fn actionST(
     enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
 ) type {
     return union(enum) {
-        AreYouSure: typedFsm.Witness(
-            T,
-            typedFsm.sdzx(T).C(
-                T.are_you_sure,
-                &.{ st, typedFsm.sdzx(T).C(T.action, &.{st}) },
-            ),
-            GST,
-            enter_fn,
-        ),
         OK: typedFsm.Witness(T, st, GST, enter_fn),
 
         pub fn handler(gst: *GST) void {
             switch (genMsg(gst)) {
                 .OK => |wit| wit.handler(gst),
-                .AreYouSure => |wit| wit.handler(gst),
             }
         }
 
@@ -161,10 +154,6 @@ pub fn actionST(
                 defer zgui.popId();
                 if (zgui.button(&gst.action.ok, .{})) {
                     return .OK;
-                }
-
-                if (zgui.button("Are You Sure!", .{})) {
-                    return .AreYouSure;
                 }
             }
         }

@@ -180,11 +180,10 @@ const Todo = enum {
     };
 
     pub const mainST = union(enum) {
-        Exit: Wit(.{ Todo.action, .{ Todo.are_you_sure, Todo.exit, Todo.main } }),
+        Exit: Wit(.{ Todo.are_you_sure, Todo.exit, Todo.main }),
         Add: Wit(.{ Todo.action, Todo.add }),
         Delete: struct { wit: Wit(Todo.main) = .{}, id: i32 },
         Modify: struct { wit: Wit(.{ Todo.action, Todo.modify }) = .{}, id: i32 },
-        Add_M: Wit(.{ Todo.action, .{ Todo.action, Todo.add } }),
 
         pub fn handler(gst: *GST) void {
             switch (genMsg(gst)) {
@@ -205,7 +204,6 @@ const Todo = enum {
                     }
                     val.wit.handler(gst);
                 },
-                .Add_M => |wit| wit.handler(gst),
             }
         }
 
@@ -241,9 +239,6 @@ const Todo = enum {
                         return .Add;
                     }
 
-                    if (zgui.button("Add_M", .{})) {
-                        return .Add_M;
-                    }
                     _ = zgui.beginTable("TodoList", .{
                         .column = 4,
                         .flags = .{ .scroll_y = true },
