@@ -17,18 +17,20 @@ pub fn main() anyerror!void {
     defer gpa.free(str_buf);
     @memset(str_buf, 0);
     const start_str = "start!";
+    @memcpy(str_buf[0..start_str.len], start_str);
 
-    for (start_str, 0..) |str, i| {
-        str_buf[i] = str;
-    }
-
-    var gst = GST{ .window = window, .str_buf = str_buf };
+    var gst = GST{
+        .gpa = gpa,
+        .window = window,
+        .str_buf = str_buf,
+    };
 
     const mainWit = Editor.Wit(Editor.init){};
     mainWit.handler_normal(&gst);
 }
 
 const GST = struct {
+    gpa: std.mem.Allocator,
     window: *Window,
     main: Main = .{},
     action: generic.Action = .{},
@@ -80,6 +82,14 @@ const Editor = enum {
     pub const exitST = union(enum) {
         pub fn handler(gst: *GST) void {
             std.debug.print("exit\n", .{});
+            std.debug.print("save main config\n", .{});
+
+            const json_str = std.json.stringifyAlloc(gst.gpa, gst.main, .{}) catch unreachable;
+            std.debug.print("{s}", .{json_str});
+            const cwd = std.fs.cwd();
+            const json_file = cwd.createFile("json.txt", .{}) catch unreachable;
+            json_file.writeAll(json_str) catch unreachable;
+
             std.debug.print("gst: {any}\n", .{gst});
         }
     };
@@ -89,6 +99,7 @@ const Editor = enum {
         Exit: Wit(Editor.exit),
 
         pub fn handler(gst: *GST) void {
+            load_config(gst);
             switch (genMsg(gst)) {
                 .GotoMain => |wit| wit.handler(gst),
                 .Exit => |wit| wit.handler(gst),
@@ -196,3 +207,15 @@ const Editor = enum {
         }
     };
 };
+
+fn load_config(gst: *GST) void {
+    var arena_instance = std.heap.ArenaAllocator.init(gst.gpa);
+    defer arena_instance.deinit();
+    const arena = arena_instance.allocator();
+    const cwd = std.fs.cwd();
+    const context = cwd.readFileAlloc(arena, "json.txt", 1 << 10) catch unreachable;
+    const parsed = std.json.parseFromSlice(Main, arena, context, .{}) catch unreachable;
+    gst.main = parsed.value;
+    const load_str = "load finish!";
+    @memcpy(gst.str_buf[0..load_str.len], load_str);
+}
