@@ -180,12 +180,14 @@ const Todo = enum {
     };
 
     pub const mainST = union(enum) {
-        Exit: Wit(.{ Todo.are_you_sure, Todo.exit, Todo.main }),
-        Add: Wit(.{ Todo.action, Todo.add, Todo.add }),
-        Delete: struct { wit: Wit(Todo.main) = .{}, id: i32 },
-        Modify: struct { wit: Wit(.{ Todo.action, Todo.modify, Todo.modify }) = .{}, id: i32 },
-        ModifyAction: Wit(.{ Todo.action, Todo.action, Todo.main }),
+        // zig fmt: off
+        Exit            : Wit(.{ Todo.are_you_sure, Todo.exit, Todo.main }),
+        Add             : Wit(.{ Todo.action, Todo.add, Todo.add }),
+        Delete          : struct { wit: Wit(Todo.main) = .{}, id: i32 },
+        Modify          : struct { wit: Wit(.{ Todo.action, Todo.modify, Todo.modify }) = .{}, id: i32 },
+        ModifyAction    : Wit(.{ Todo.action, Todo.action, Todo.main }),
         ModifyAreYouSure: Wit(.{ Todo.action, Todo.are_you_sure, Todo.main }),
+        // zig fmt: on
 
         pub fn handler(gst: *GST) void {
             switch (genMsg(gst)) {
