@@ -12,9 +12,16 @@ pub fn main() anyerror!void {
 
     const window = try generic.init_zgui(gpa, "editor");
     defer generic.deinit_zgui(window);
+
+    var gst = GST{ .window = window };
+
+    const mainWit = Editor.Wit(Editor.main){};
+    mainWit.handler_normal(&gst);
 }
 
-const GST = struct {};
+const GST = struct {
+    window: *Window,
+};
 
 const Editor = enum {
     exit,
@@ -39,6 +46,48 @@ const Editor = enum {
         Print: Wit(Editor.main),
         Exit: Wit(Editor.exit),
 
-        // pub fn handler(gst: *GST) void {}
+        pub fn handler(gst: *GST) void {
+            switch (genMsg(gst)) {
+                .Print => |wit| {
+                    std.debug.print("nice\n", .{});
+                    wit.handler(gst);
+                },
+                .Exit => |wit| wit.handler(gst),
+            }
+        }
+
+        fn genMsg(gst: *GST) @This() {
+            const window = gst.window;
+            while (true) {
+                generic.clear_and_init(window);
+                defer {
+                    zgui.backend.draw();
+                    window.swapBuffers();
+                }
+
+                if (window.shouldClose() or
+                    window.getKey(.q) == .press or
+                    window.getKey(.escape) == .press)
+                    return .Exit;
+
+                {
+                    _ = zgui.begin("main", .{ .flags = .{
+                        .no_collapse = true,
+
+                        .no_move = true,
+                        .no_resize = true,
+                    } });
+                    defer zgui.end();
+
+                    if (zgui.button("print", .{})) {
+                        return .Print;
+                    }
+
+                    if (zgui.button("exit", .{})) {
+                        return .Exit;
+                    }
+                }
+            }
+        }
     };
 };
