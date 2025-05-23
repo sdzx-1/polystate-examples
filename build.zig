@@ -5,10 +5,11 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // zig fmt: off
-    const typed_fsm = b.dependency("typed_fsm", .{.target = target, .optimize = optimize});
-    const zopengl   = b.dependency("zopengl",   .{.target = target});
-    const zglfw     = b.dependency("zglfw",     .{.target = target, .optimize = optimize});
-    const zgui      = b.dependency("zgui",      .{.target = target, .optimize = optimize, .backend = .glfw_opengl3,});
+    const typed_fsm  = b.dependency("typed_fsm",  .{.target = target, .optimize = optimize});
+    const zopengl    = b.dependency("zopengl",    .{.target = target});
+    const zglfw      = b.dependency("zglfw",      .{.target = target, .optimize = optimize});
+    const zgui       = b.dependency("zgui",       .{.target = target, .optimize = optimize, .backend = .glfw_opengl3,});
+    const raylib_dep = b.dependency("raylib_zig", .{.target = target, .optimize = optimize});
     // zig fmt: on
 
     const install_content_step = b.addInstallFile(
@@ -38,6 +39,8 @@ pub fn build(b: *std.Build) void {
                     .{ .name = "zglfw", .module = zglfw.module("root") },
                     .{ .name = "zopengl", .module = zopengl.module("root") },
                     .{ .name = "zgui", .module = zgui.module("root") },
+                    .{ .name = "raylib", .module = raylib_dep.module("raylib") },
+                    .{ .name = "raygui", .module = raylib_dep.module("raygui") },
                 },
             });
 
@@ -47,6 +50,7 @@ pub fn build(b: *std.Build) void {
             });
             exe.linkLibrary(zglfw.artifact("glfw"));
             exe.linkLibrary(zgui.artifact("imgui"));
+            exe.linkLibrary(raylib_dep.artifact("raylib"));
 
             b.installArtifact(exe);
 
