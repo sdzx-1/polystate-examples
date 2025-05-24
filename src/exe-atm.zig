@@ -59,7 +59,14 @@ pub const Atm = enum {
     }
 
     pub fn are_you_sureST(yes: typedFsm.sdzx(Atm), no: typedFsm.sdzx(Atm)) type {
-        return generic.are_you_sureST(Atm, yes, no, State, prinet_enter_state);
+        return generic.are_you_sureST(
+            Atm,
+            yes,
+            no,
+            State,
+            prinet_enter_state,
+            generic.zgui_are_you_sure_genMsg,
+        );
     }
 
     pub const exitST = union(enum) {

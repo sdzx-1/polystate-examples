@@ -34,7 +34,7 @@ const TmpEntry = struct {
     title: [40:0]u8 = @splat(0),
     completed: bool = false,
 
-    pub fn render(self: *@This()) void {
+    pub fn zgui_render(self: *@This()) void {
         _ = zgui.inputText("title", .{
             .buf = &self.title,
         });
@@ -110,11 +110,18 @@ const Todo = enum {
     };
 
     pub fn are_you_sureST(yes: typedFsm.sdzx(Todo), no: typedFsm.sdzx(Todo)) type {
-        return generic.are_you_sureST(Todo, yes, no, GST, enter_fn);
+        return generic.are_you_sureST(
+            Todo,
+            yes,
+            no,
+            GST,
+            enter_fn,
+            generic.zgui_are_you_sure_genMsg,
+        );
     }
 
     pub fn actionST(mst: typedFsm.sdzx(Todo), jst: typedFsm.sdzx(Todo)) type {
-        return generic.actionST(Todo, mst, jst, GST, enter_fn);
+        return generic.actionST(Todo, mst, jst, GST, enter_fn, generic.zgui_action_genMsg);
     }
 
     pub const modifyST = union(enum) {

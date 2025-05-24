@@ -50,7 +50,7 @@ const Main = struct {
     print: [2]f32 = .{ 0, 120 },
     modify: [2]f32 = .{ 0, 160 },
 
-    pub fn render(self: *@This()) void {
+    pub fn zgui_render(self: *@This()) void {
         _ = zgui.sliderFloat2("exit", .{ .v = &self.exit, .min = 0, .max = 1000 });
         _ = zgui.sliderFloat2("print", .{ .v = &self.print, .min = 0, .max = 1000 });
         _ = zgui.sliderFloat2("modify", .{ .v = &self.modify, .min = 0, .max = 1000 });
@@ -82,7 +82,7 @@ const Editor = enum {
     }
 
     pub fn actionST(mst: typedFsm.sdzx(Editor), jst: typedFsm.sdzx(Editor)) type {
-        return generic.actionST(Editor, mst, jst, GST, enter_fn);
+        return generic.actionST(Editor, mst, jst, GST, enter_fn, generic.zgui_action_genMsg);
     }
 
     pub const exitST = union(enum) {
