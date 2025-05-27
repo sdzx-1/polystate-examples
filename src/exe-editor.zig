@@ -5,6 +5,8 @@ const zgui = @import("zgui");
 const glfw = @import("zglfw");
 const generic = @import("generic.zig");
 const Window = glfw.Window;
+const rl = @import("raylib");
+const rg = @import("raygui");
 
 pub fn main() anyerror!void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
@@ -49,6 +51,11 @@ const Main = struct {
     exit: [2]f32 = .{ 0, 80 },
     print: [2]f32 = .{ 0, 120 },
     modify: [2]f32 = .{ 0, 160 },
+
+    pub fn ray_render(self: *@This()) void {
+        _ = self;
+        // rg.button()
+    }
 
     pub fn zgui_render(self: *@This()) void {
         _ = zgui.sliderFloat2("exit", .{ .v = &self.exit, .min = 0, .max = 1000 });

@@ -71,6 +71,34 @@ pub fn are_you_sureST(
     };
 }
 
+pub fn actionST(
+    T: type,
+    mst: typedFsm.sdzx(T),
+    jst: typedFsm.sdzx(T),
+    GST: type,
+    enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
+    ui_fn: fn (GST: type, comptime []const u8, *GST) void,
+) type {
+    return union(enum) {
+        OK: typedFsm.Witness(T, jst, GST, enter_fn),
+
+        pub fn handler(gst: *GST) void {
+            const nst = switch (mst) {
+                .Term => |v| @tagName(v),
+                .Fun => |val| @tagName(val.fun),
+            };
+            switch (genMsg(nst, gst)) {
+                .OK => |wit| wit.handler(gst),
+            }
+        }
+
+        fn genMsg(comptime nst: []const u8, gst: *GST) @This() {
+            ui_fn(GST, nst, gst);
+            return .OK;
+        }
+    };
+}
+
 pub fn zgui_are_you_sure_genMsg(GST: type, gst: *GST) bool {
     const window = gst.window;
     var buf: [360]u8 = @splat(0);
@@ -118,35 +146,6 @@ pub fn zgui_are_you_sure_genMsg(GST: type, gst: *GST) bool {
         if (window.getKey(.n) == .press) return false;
     }
 }
-
-pub fn actionST(
-    T: type,
-    mst: typedFsm.sdzx(T),
-    jst: typedFsm.sdzx(T),
-    GST: type,
-    enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
-    ui_fn: fn (GST: type, comptime []const u8, *GST) void,
-) type {
-    return union(enum) {
-        OK: typedFsm.Witness(T, jst, GST, enter_fn),
-
-        pub fn handler(gst: *GST) void {
-            const nst = switch (mst) {
-                .Term => |v| @tagName(v),
-                .Fun => |val| @tagName(val.fun),
-            };
-            switch (genMsg(nst, gst)) {
-                .OK => |wit| wit.handler(gst),
-            }
-        }
-
-        fn genMsg(comptime nst: []const u8, gst: *GST) @This() {
-            ui_fn(GST, nst, gst);
-            return .OK;
-        }
-    };
-}
-
 pub fn zgui_action_genMsg(GST: type, comptime nst: []const u8, gst: *GST) void {
     const window = gst.window;
     var buf: [30]u8 = @splat(0);
