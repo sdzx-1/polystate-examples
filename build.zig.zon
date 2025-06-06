@@ -37,8 +37,8 @@
     // internet connectivity.
     .dependencies = .{
         .typed_fsm = .{
-            .url = "git+https://github.com/sdzx-1/typed-fsm-zig.git#555a20c826fd524e7fea6eca890186646a7ffd7a",
-            .hash = "typed_fsm-0.0.0-g0MC1i45AAB5tPtzllGGvrs3liZK2aiF89B9ryXgN_s1",
+            .url = "git+https://github.com/sdzx-1/typed-fsm-zig.git#dfdc893718c6f8288c27f241d0a726fbe514f868",
+            .hash = "typed_fsm-0.0.0-g0MC1j84AACqxMJu3m7UJuL0m73QKKqfyVVXl8tx4_iG",
         },
 
         .zglfw = .{

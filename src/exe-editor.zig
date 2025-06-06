@@ -14,7 +14,7 @@ pub fn main() anyerror!void {
 
     // -------------------------------------
     var graph = typedFsm.Graph.init;
-    try typedFsm.generate_graph(gpa, Editor, &graph);
+    try graph.generate(gpa, Editor);
     std.debug.print("{}\n", .{graph});
     // -------------------------------------
 

@@ -6,7 +6,7 @@ pub fn main() !void {
     const gpa = gpa_instance.allocator();
 
     var graph = typedFsm.Graph.init;
-    try typedFsm.generate_graph(gpa, Example, &graph);
+    try graph.generate(gpa, Example);
 
     std.debug.print("{}\n", .{graph});
 

@@ -15,7 +15,7 @@ pub fn main() !void {
 
     // -------------------------------------
     var graph = typedFsm.Graph.init;
-    try typedFsm.generate_graph(gpa, Todo, &graph);
+    try graph.generate(gpa, Todo);
     std.debug.print("{}\n", .{graph});
     // -------------------------------------
     var gst = GST.init(gpa, "TodoList", window);

@@ -16,7 +16,7 @@ pub fn main() anyerror!void {
     var ist = Atm.State.init(window);
 
     var graph = typedFsm.Graph.init;
-    try typedFsm.generate_graph(gpa, Atm, &graph);
+    try graph.generate(gpa, Atm);
 
     std.debug.print("{}\n", .{graph});
 
