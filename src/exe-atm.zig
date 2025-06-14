@@ -1,6 +1,6 @@
 const std = @import("std");
-const typedFsm = @import("typed_fsm");
-const Witness = typedFsm.Witness;
+const polystate = @import("polystate");
+const Witness = polystate.Witness;
 const zgui = @import("zgui");
 const glfw = @import("zglfw");
 const generic = @import("generic.zig");
@@ -15,7 +15,7 @@ pub fn main() anyerror!void {
 
     var ist = Atm.State.init(window);
 
-    var graph = typedFsm.Graph.init;
+    var graph = polystate.Graph.init;
     try graph.generate(gpa, Atm);
 
     std.debug.print("{}\n", .{graph});
@@ -44,7 +44,7 @@ pub const Atm = enum {
     };
 
     fn prinet_enter_state(
-        val: typedFsm.sdzx(Atm),
+        val: polystate.sdzx(Atm),
         gst: *const Atm.State,
     ) void {
         std.debug.print("current_st :  {}\n", .{val});
@@ -52,13 +52,13 @@ pub const Atm = enum {
     }
 
     pub fn EWit(t: @This()) type {
-        return typedFsm.Witness(@This(), typedFsm.val_to_sdzx(@This(), t), State, prinet_enter_state);
+        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), t), State, prinet_enter_state);
     }
     pub fn EWitFn(val: anytype) type {
-        return typedFsm.Witness(@This(), typedFsm.val_to_sdzx(@This(), val), State, prinet_enter_state);
+        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), val), State, prinet_enter_state);
     }
 
-    pub fn are_you_sureST(yes: typedFsm.sdzx(Atm), no: typedFsm.sdzx(Atm)) type {
+    pub fn are_you_sureST(yes: polystate.sdzx(Atm), no: polystate.sdzx(Atm)) type {
         return generic.are_you_sureST(
             Atm,
             yes,
@@ -119,10 +119,10 @@ pub const Atm = enum {
         }
     };
 
-    pub fn checkPinST(success: typedFsm.sdzx(Atm), failed: typedFsm.sdzx(Atm)) type {
+    pub fn checkPinST(success: polystate.sdzx(Atm), failed: polystate.sdzx(Atm)) type {
         return union(enum) {
-            Successed: typedFsm.Witness(Atm, success, State, prinet_enter_state),
-            Failed: typedFsm.Witness(Atm, failed, State, prinet_enter_state),
+            Successed: polystate.Witness(Atm, success, State, prinet_enter_state),
+            Failed: polystate.Witness(Atm, failed, State, prinet_enter_state),
 
             pub fn handler(ist: *State) void {
                 switch (genMsg(ist.window, &ist.pin)) {

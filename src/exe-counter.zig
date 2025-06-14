@@ -1,11 +1,11 @@
 const std = @import("std");
-const typedFsm = @import("typed_fsm");
+const polystate = @import("polystate");
 
 pub fn main() !void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa = gpa_instance.allocator();
 
-    var graph = typedFsm.Graph.init;
+    var graph = polystate.Graph.init;
     try graph.generate(gpa, Example);
 
     std.debug.print("{}\n", .{graph});
@@ -30,7 +30,7 @@ const Example = enum {
     };
 
     fn prinet_enter_state(
-        val: typedFsm.sdzx(Example),
+        val: polystate.sdzx(Example),
         gst: *const Example.State,
     ) void {
         std.debug.print("{} ", .{val});
@@ -38,10 +38,10 @@ const Example = enum {
     }
 
     pub fn EWit(t: @This()) type {
-        return typedFsm.Witness(@This(), typedFsm.val_to_sdzx(@This(), t), State, prinet_enter_state);
+        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), t), State, prinet_enter_state);
     }
     pub fn EWitFn(val: anytype) type {
-        return typedFsm.Witness(@This(), typedFsm.val_to_sdzx(@This(), val), State, prinet_enter_state);
+        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), val), State, prinet_enter_state);
     }
 
     pub const exitST = union(enum) {
@@ -52,7 +52,7 @@ const Example = enum {
     };
     pub const bST = b_st;
     pub const aST = a_st;
-    pub fn selectST(sa: typedFsm.sdzx(@This()), sb: typedFsm.sdzx(@This())) type {
+    pub fn selectST(sa: polystate.sdzx(@This()), sb: polystate.sdzx(@This())) type {
         return select_st(@This(), .select, sa, sb, State);
     }
 };
@@ -97,17 +97,17 @@ pub const b_st = union(enum) {
 pub fn select_st(
     T: type,
     current_st: T,
-    a: typedFsm.sdzx(T),
-    b: typedFsm.sdzx(T),
+    a: polystate.sdzx(T),
+    b: polystate.sdzx(T),
     State: type,
 ) type {
     return union(enum) {
         SelectA: RWit(a),
         SelectB: RWit(b),
-        Retry: RWit(typedFsm.sdzx(T).C(current_st, &.{ a, b })),
+        Retry: RWit(polystate.sdzx(T).C(current_st, &.{ a, b })),
 
-        fn RWit(val: typedFsm.sdzx(T)) type {
-            return typedFsm.Witness(T, val, State, null);
+        fn RWit(val: polystate.sdzx(T)) type {
+            return polystate.Witness(T, val, State, null);
         }
 
         pub fn handler(ist: *State) void {

@@ -1,6 +1,6 @@
 const std = @import("std");
-const typedFsm = @import("typed_fsm");
-const Witness = typedFsm.Witness;
+const polystate = @import("polystate");
+const Witness = polystate.Witness;
 const zgui = @import("zgui");
 const glfw = @import("zglfw");
 const generic = @import("generic.zig");
@@ -14,7 +14,7 @@ pub fn main() !void {
     defer generic.deinit_zgui(window);
 
     // -------------------------------------
-    var graph = typedFsm.Graph.init;
+    var graph = polystate.Graph.init;
     try graph.generate(gpa, Todo);
     std.debug.print("{}\n", .{graph});
     // -------------------------------------
@@ -94,12 +94,12 @@ const Todo = enum {
     action, //action add add
     are_you_sure,
 
-    fn enter_fn(cst: typedFsm.sdzx(@This()), gst: *const GST) void {
+    fn enter_fn(cst: polystate.sdzx(@This()), gst: *const GST) void {
         std.debug.print("cst: {}, gst: {any}\n", .{ cst, gst });
     }
 
     pub fn Wit(val: anytype) type {
-        return typedFsm.Witness(@This(), typedFsm.val_to_sdzx(Todo, val), GST, enter_fn);
+        return polystate.Witness(@This(), polystate.val_to_sdzx(Todo, val), GST, enter_fn);
     }
 
     pub const exitST = union(enum) {
@@ -109,7 +109,7 @@ const Todo = enum {
         }
     };
 
-    pub fn are_you_sureST(yes: typedFsm.sdzx(Todo), no: typedFsm.sdzx(Todo)) type {
+    pub fn are_you_sureST(yes: polystate.sdzx(Todo), no: polystate.sdzx(Todo)) type {
         return generic.are_you_sureST(
             Todo,
             yes,
@@ -120,7 +120,7 @@ const Todo = enum {
         );
     }
 
-    pub fn actionST(mst: typedFsm.sdzx(Todo), jst: typedFsm.sdzx(Todo)) type {
+    pub fn actionST(mst: polystate.sdzx(Todo), jst: polystate.sdzx(Todo)) type {
         return generic.actionST(Todo, mst, jst, GST, enter_fn, generic.zgui_action_genMsg);
     }
 

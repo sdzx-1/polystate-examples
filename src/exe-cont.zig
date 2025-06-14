@@ -1,14 +1,14 @@
 const std = @import("std");
-const typedFsm = @import("typed_fsm");
+const polystate = @import("polystate");
 
-const ContR = typedFsm.ContR;
+const ContR = polystate.ContR;
 
 pub fn main() !void {
     //
     var gpa_instance = std.heap.DebugAllocator(.{}).init;
     const gpa = gpa_instance.allocator();
 
-    var graph = typedFsm.Graph.init;
+    var graph = polystate.Graph.init;
 
     try graph.generate(gpa, Example);
 
@@ -94,6 +94,6 @@ const Example = enum {
     };
 
     pub fn Wit(val: anytype) type {
-        return typedFsm.Witness(@This(), typedFsm.val_to_sdzx(@This(), val), GST, null);
+        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), val), GST, null);
     }
 };

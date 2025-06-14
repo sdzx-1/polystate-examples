@@ -1,6 +1,6 @@
 const std = @import("std");
-const typedFsm = @import("typed_fsm");
-const Witness = typedFsm.Witness;
+const polystate = @import("polystate");
+const Witness = polystate.Witness;
 const zgui = @import("zgui");
 const glfw = @import("zglfw");
 const generic = @import("generic.zig");
@@ -13,7 +13,7 @@ pub fn main() anyerror!void {
     const gpa = gpa_instance.allocator();
 
     // -------------------------------------
-    var graph = typedFsm.Graph.init;
+    var graph = polystate.Graph.init;
     try graph.generate(gpa, Editor);
     std.debug.print("{}\n", .{graph});
     // -------------------------------------
@@ -79,16 +79,16 @@ const Editor = enum {
     main,
     action,
 
-    fn enter_fn(cst: typedFsm.sdzx(@This()), gst: *const GST) void {
+    fn enter_fn(cst: polystate.sdzx(@This()), gst: *const GST) void {
         _ = gst;
         std.debug.print("cst: {}\n", .{cst});
     }
 
     pub fn Wit(val: anytype) type {
-        return typedFsm.Witness(@This(), typedFsm.val_to_sdzx(Editor, val), GST, enter_fn);
+        return polystate.Witness(@This(), polystate.val_to_sdzx(Editor, val), GST, enter_fn);
     }
 
-    pub fn actionST(mst: typedFsm.sdzx(Editor), jst: typedFsm.sdzx(Editor)) type {
+    pub fn actionST(mst: polystate.sdzx(Editor), jst: polystate.sdzx(Editor)) type {
         return generic.actionST(Editor, mst, jst, GST, enter_fn, generic.zgui_action_genMsg);
     }
 

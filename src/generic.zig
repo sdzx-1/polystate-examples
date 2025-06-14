@@ -1,6 +1,6 @@
 const std = @import("std");
-const typedFsm = @import("typed_fsm");
-const Witness = typedFsm.Witness;
+const polystate = @import("polystate");
+const Witness = polystate.Witness;
 const zgui = @import("zgui");
 const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
@@ -48,15 +48,15 @@ pub const Action = struct {
 
 pub fn are_you_sureST(
     T: type,
-    yes: typedFsm.sdzx(T),
-    no: typedFsm.sdzx(T),
+    yes: polystate.sdzx(T),
+    no: polystate.sdzx(T),
     GST: type,
-    enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
+    enter_fn: ?fn (polystate.sdzx(T), *const GST) void,
     ui_fn: fn (GST: type, *const GST) bool,
 ) type {
     return union(enum) {
-        Yes: typedFsm.Witness(T, yes, GST, enter_fn),
-        No: typedFsm.Witness(T, no, GST, enter_fn),
+        Yes: polystate.Witness(T, yes, GST, enter_fn),
+        No: polystate.Witness(T, no, GST, enter_fn),
 
         pub fn handler(gst: *GST) void {
             switch (genMsg(gst)) {
@@ -73,14 +73,14 @@ pub fn are_you_sureST(
 
 pub fn actionST(
     T: type,
-    mst: typedFsm.sdzx(T),
-    jst: typedFsm.sdzx(T),
+    mst: polystate.sdzx(T),
+    jst: polystate.sdzx(T),
     GST: type,
-    enter_fn: ?fn (typedFsm.sdzx(T), *const GST) void,
+    enter_fn: ?fn (polystate.sdzx(T), *const GST) void,
     ui_fn: fn (GST: type, comptime []const u8, *GST) void,
 ) type {
     return union(enum) {
-        OK: typedFsm.Witness(T, jst, GST, enter_fn),
+        OK: polystate.Witness(T, jst, GST, enter_fn),
 
         pub fn handler(gst: *GST) void {
             const nst = switch (mst) {
