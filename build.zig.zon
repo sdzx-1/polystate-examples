@@ -57,8 +57,8 @@
             .hash = "raylib_zig-5.6.0-dev-KE8REKAqBQAQugfCOjYYVRFOi7iaEJK1EMDcRUq8AOm2",
         },
         .polystate = .{
-            .url = "git+https://github.com/sdzx-1/polystate.git#2864435230af7b9554d8260e0e566caf11ffd1cf",
-            .hash = "polystate-0.0.0-8by0_KswAADVpNs02l1vpKxxv10JphrBCrPfM58rSm_q",
+            .url = "git+https://github.com/sdzx-1/polystate.git#20c7d52dc24512f200b47d3fbf150f6dd6087799",
+            .hash = "polystate-0.0.0-8by0_EQwAACsEygjBap5-mqamTmeNR3GwVo8cAVtx2py",
         },
     },
     .paths = .{
