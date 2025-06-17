@@ -13,74 +13,71 @@ pub fn main() anyerror!void {
     const window = try generic.init_zgui(gpa, "ATM");
     defer generic.deinit_zgui(window);
 
-    var ist = Atm.State.init(window);
+    var ist = GST.init(window);
 
     var graph = polystate.Graph.init;
     try graph.generate(gpa, Atm);
 
     std.debug.print("{}\n", .{graph});
 
-    const wa = Atm.EWit(.ready){};
+    const wa = Atm.Wit(Atm.ready){};
     wa.handler_normal(&ist);
 }
+
+pub const GST = struct {
+    pin: [4]u8 = .{ 1, 2, 3, 4 },
+    amount: usize = 10_0000,
+    window: *Window,
+    //
+    are_you_sure: generic.AreYouSure = .{},
+
+    pub fn init(win: *Window) @This() {
+        return .{ .window = win };
+    }
+};
 
 pub const Atm = enum {
     exit,
     ready,
-    checkPin, // checkPin(session, checkPin(session, checkPin(session, ready)))
+    checkPin,
     session,
     are_you_sure,
 
-    pub const State = struct {
-        pin: [4]u8 = .{ 1, 2, 3, 4 },
-        amount: usize = 10_0000,
-        window: *Window,
-        //
-        are_you_sure: generic.AreYouSure = .{},
-
-        pub fn init(win: *Window) @This() {
-            return .{ .window = win };
-        }
-    };
-
     fn prinet_enter_state(
         val: polystate.sdzx(Atm),
-        gst: *const Atm.State,
+        gst: *const GST,
     ) void {
         std.debug.print("current_st :  {}\n", .{val});
         std.debug.print("current_gst: {any}\n", .{gst.*});
     }
 
-    pub fn EWit(t: @This()) type {
-        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), t), State, prinet_enter_state);
-    }
-    pub fn EWitFn(val: anytype) type {
-        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), val), State, prinet_enter_state);
+    pub fn Wit(val: anytype) type {
+        return polystate.Witness(@This(), GST, prinet_enter_state, polystate.val_to_sdzx(@This(), val));
     }
 
     pub fn are_you_sureST(yes: polystate.sdzx(Atm), no: polystate.sdzx(Atm)) type {
         return generic.are_you_sureST(
             Atm,
-            yes,
-            no,
-            State,
+            GST,
             prinet_enter_state,
             generic.zgui_are_you_sure_genMsg,
+            yes,
+            no,
         );
     }
 
     pub const exitST = union(enum) {
-        pub fn handler(ist: *State) void {
+        pub fn handler(ist: *GST) void {
             std.debug.print("exit\n", .{});
             std.debug.print("st: {any}\n", .{ist.*});
         }
     };
 
     pub const readyST = union(enum) {
-        InsertCard: EWitFn(.{ Atm.checkPin, Atm.session, .{ Atm.checkPin, Atm.session, .{ Atm.checkPin, Atm.session, Atm.ready } } }),
-        Exit: EWitFn(.{ Atm.are_you_sure, Atm.exit, Atm.ready }),
+        InsertCard: Wit(.{ Atm.checkPin, Atm.session, .{ Atm.checkPin, Atm.session, .{ Atm.checkPin, Atm.session, Atm.ready } } }),
+        Exit: Wit(.{ Atm.are_you_sure, Atm.exit, Atm.ready }),
 
-        pub fn handler(ist: *State) void {
+        pub fn handler(ist: *GST) void {
             switch (genMsg(ist.window)) {
                 .Exit => |wit| wit.handler(ist),
                 .InsertCard => |wit| wit.handler(ist),
@@ -121,10 +118,10 @@ pub const Atm = enum {
 
     pub fn checkPinST(success: polystate.sdzx(Atm), failed: polystate.sdzx(Atm)) type {
         return union(enum) {
-            Successed: polystate.Witness(Atm, success, State, prinet_enter_state),
-            Failed: polystate.Witness(Atm, failed, State, prinet_enter_state),
+            Successed: polystate.Witness(Atm, GST, prinet_enter_state, success),
+            Failed: polystate.Witness(Atm, GST, prinet_enter_state, failed),
 
-            pub fn handler(ist: *State) void {
+            pub fn handler(ist: *GST) void {
                 switch (genMsg(ist.window, &ist.pin)) {
                     .Successed => |wit| wit.handler(ist),
                     .Failed => |wit| wit.handler(ist),
@@ -170,10 +167,10 @@ pub const Atm = enum {
     }
 
     pub const sessionST = union(enum) {
-        Disponse: struct { wit: EWit(.session) = .{}, v: usize },
-        EjectCard: EWit(.ready),
+        Disponse: struct { wit: Wit(Atm.session) = .{}, v: usize },
+        EjectCard: Wit(Atm.ready),
 
-        pub fn handler(ist: *State) void {
+        pub fn handler(ist: *GST) void {
             switch (genMsg(ist.window, ist.amount)) {
                 .Disponse => |val| {
                     if (ist.amount >= val.v) {

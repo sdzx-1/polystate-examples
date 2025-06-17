@@ -99,7 +99,7 @@ const Todo = enum {
     }
 
     pub fn Wit(val: anytype) type {
-        return polystate.Witness(@This(), polystate.val_to_sdzx(Todo, val), GST, enter_fn);
+        return polystate.Witness(@This(), GST, enter_fn, polystate.val_to_sdzx(Todo, val));
     }
 
     pub const exitST = union(enum) {
@@ -112,16 +112,16 @@ const Todo = enum {
     pub fn are_you_sureST(yes: polystate.sdzx(Todo), no: polystate.sdzx(Todo)) type {
         return generic.are_you_sureST(
             Todo,
-            yes,
-            no,
             GST,
             enter_fn,
             generic.zgui_are_you_sure_genMsg,
+            yes,
+            no,
         );
     }
 
     pub fn actionST(mst: polystate.sdzx(Todo), jst: polystate.sdzx(Todo)) type {
-        return generic.actionST(Todo, mst, jst, GST, enter_fn, generic.zgui_action_genMsg);
+        return generic.actionST(Todo, GST, enter_fn, generic.zgui_action_genMsg, mst, jst);
     }
 
     pub const modifyST = union(enum) {

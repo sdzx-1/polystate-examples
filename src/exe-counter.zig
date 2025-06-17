@@ -11,11 +11,16 @@ pub fn main() !void {
     std.debug.print("{}\n", .{graph});
 
     std.debug.print("----------------------------\n", .{});
-    var st: Example.State = .{};
-    const wa = Example.EWit(.a){};
+    var st: GST = .{};
+    const wa = Example.Wit(Example.a){};
     wa.handler_normal(&st);
     std.debug.print("----------------------------\n", .{});
 }
+
+pub const GST = struct {
+    counter_a: i64 = 0,
+    counter_b: i64 = 0,
+};
 
 ///Example
 const Example = enum {
@@ -24,28 +29,20 @@ const Example = enum {
     b,
     select,
 
-    pub const State = struct {
-        counter_a: i64 = 0,
-        counter_b: i64 = 0,
-    };
-
     fn prinet_enter_state(
         val: polystate.sdzx(Example),
-        gst: *const Example.State,
+        gst: *const GST,
     ) void {
         std.debug.print("{} ", .{val});
         std.debug.print("gst: {any}\n", .{gst.*});
     }
 
-    pub fn EWit(t: @This()) type {
-        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), t), State, prinet_enter_state);
-    }
-    pub fn EWitFn(val: anytype) type {
-        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), val), State, prinet_enter_state);
+    pub fn Wit(val: anytype) type {
+        return polystate.Witness(@This(), GST, prinet_enter_state, polystate.val_to_sdzx(@This(), val));
     }
 
     pub const exitST = union(enum) {
-        pub fn handler(ist: *State) void {
+        pub fn handler(ist: *GST) void {
             std.debug.print("exit\n", .{});
             std.debug.print("st: {any}\n", .{ist.*});
         }
@@ -53,15 +50,15 @@ const Example = enum {
     pub const bST = b_st;
     pub const aST = a_st;
     pub fn selectST(sa: polystate.sdzx(@This()), sb: polystate.sdzx(@This())) type {
-        return select_st(@This(), .select, sa, sb, State);
+        return select_st(@This(), .select, sa, sb, GST);
     }
 };
 
 pub const a_st = union(enum) {
-    AddOneThenToB: Example.EWit(.b),
-    Exit: Example.EWitFn(.{ Example.select, .{ Example.select, Example.exit, Example.a }, Example.a }),
+    AddOneThenToB: Example.Wit(Example.b),
+    Exit: Example.Wit(.{ Example.select, .{ Example.select, Example.exit, Example.a }, Example.a }),
 
-    pub fn handler(ist: *Example.State) void {
+    pub fn handler(ist: *GST) void {
         switch (genMsg(ist)) {
             .AddOneThenToB => |wit| {
                 ist.counter_a += 1;
@@ -71,16 +68,16 @@ pub const a_st = union(enum) {
         }
     }
 
-    fn genMsg(ist: *Example.State) @This() {
+    fn genMsg(ist: *GST) @This() {
         if (ist.counter_a > 3) return .Exit;
         return .AddOneThenToB;
     }
 };
 
 pub const b_st = union(enum) {
-    AddOneThenToA: Example.EWit(Example.a),
+    AddOneThenToA: Example.Wit(Example.a),
 
-    pub fn handler(ist: *Example.State) void {
+    pub fn handler(ist: *GST) void {
         switch (genMsg()) {
             .AddOneThenToA => |wit| {
                 ist.counter_b += 1;
@@ -107,7 +104,7 @@ pub fn select_st(
         Retry: RWit(polystate.sdzx(T).C(current_st, &.{ a, b })),
 
         fn RWit(val: polystate.sdzx(T)) type {
-            return polystate.Witness(T, val, State, null);
+            return polystate.Witness(T, State, null, val);
         }
 
         pub fn handler(ist: *State) void {

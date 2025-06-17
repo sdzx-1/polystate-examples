@@ -29,6 +29,31 @@ pub const AreYouSure = struct {
     }
 };
 
+pub fn are_you_sureST(
+    FST: type,
+    GST: type,
+    enter_fn: ?fn (polystate.sdzx(FST), *const GST) void,
+    ui_fn: fn (GST: type, *const GST) bool,
+    yes: polystate.sdzx(FST),
+    no: polystate.sdzx(FST),
+) type {
+    return union(enum) {
+        Yes: polystate.Witness(FST, GST, enter_fn, yes),
+        No: polystate.Witness(FST, GST, enter_fn, no),
+
+        pub fn handler(gst: *GST) void {
+            switch (genMsg(gst)) {
+                .Yes => |wit| wit.handler(gst),
+                .No => |wit| wit.handler(gst),
+            }
+        }
+
+        fn genMsg(gst: *const GST) @This() {
+            if (ui_fn(GST, gst)) return .Yes else return .No;
+        }
+    };
+}
+
 pub const Action = struct {
     ok: [20:0]u8 = blk: {
         var tmp: [20:0]u8 = @splat(0);
@@ -46,41 +71,16 @@ pub const Action = struct {
     }
 };
 
-pub fn are_you_sureST(
-    T: type,
-    yes: polystate.sdzx(T),
-    no: polystate.sdzx(T),
-    GST: type,
-    enter_fn: ?fn (polystate.sdzx(T), *const GST) void,
-    ui_fn: fn (GST: type, *const GST) bool,
-) type {
-    return union(enum) {
-        Yes: polystate.Witness(T, yes, GST, enter_fn),
-        No: polystate.Witness(T, no, GST, enter_fn),
-
-        pub fn handler(gst: *GST) void {
-            switch (genMsg(gst)) {
-                .Yes => |wit| wit.handler(gst),
-                .No => |wit| wit.handler(gst),
-            }
-        }
-
-        fn genMsg(gst: *const GST) @This() {
-            if (ui_fn(GST, gst)) return .Yes else return .No;
-        }
-    };
-}
-
 pub fn actionST(
-    T: type,
-    mst: polystate.sdzx(T),
-    jst: polystate.sdzx(T),
+    FST: type,
     GST: type,
-    enter_fn: ?fn (polystate.sdzx(T), *const GST) void,
+    enter_fn: ?fn (polystate.sdzx(FST), *const GST) void,
     ui_fn: fn (GST: type, comptime []const u8, *GST) void,
+    mst: polystate.sdzx(FST),
+    jst: polystate.sdzx(FST),
 ) type {
     return union(enum) {
-        OK: polystate.Witness(T, jst, GST, enter_fn),
+        OK: polystate.Witness(FST, GST, enter_fn, jst),
 
         pub fn handler(gst: *GST) void {
             const nst = switch (mst) {

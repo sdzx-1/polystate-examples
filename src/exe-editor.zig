@@ -85,11 +85,11 @@ const Editor = enum {
     }
 
     pub fn Wit(val: anytype) type {
-        return polystate.Witness(@This(), polystate.val_to_sdzx(Editor, val), GST, enter_fn);
+        return polystate.Witness(@This(), GST, enter_fn, polystate.val_to_sdzx(Editor, val));
     }
 
     pub fn actionST(mst: polystate.sdzx(Editor), jst: polystate.sdzx(Editor)) type {
-        return generic.actionST(Editor, mst, jst, GST, enter_fn, generic.zgui_action_genMsg);
+        return generic.actionST(Editor, GST, enter_fn, generic.zgui_action_genMsg, mst, jst);
     }
 
     pub const exitST = union(enum) {

@@ -98,6 +98,6 @@ const Example = enum {
     };
 
     pub fn Wit(val: anytype) type {
-        return polystate.Witness(@This(), polystate.val_to_sdzx(@This(), val), GST, null);
+        return polystate.Witness(@This(), GST, null, polystate.val_to_sdzx(@This(), val));
     }
 };
