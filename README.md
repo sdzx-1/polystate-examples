@@ -6,6 +6,7 @@ The latest x86 backend of the zig compiler has switched to the zig implementatio
 # examples
 
 ## atm
+default pin: 1234
 ```shell
 zig build -Doptimize=ReleaseFast atm
 ```
@@ -25,13 +26,6 @@ zig build -Doptimize=ReleaseFast todo
 ```
 ![todo_graph](data/todo_graph.svg)
 ![atm_graph](data/todo.png)
-
-## Editor
-```shell
-zig build -Doptimize=ReleaseFast editor
-```
-![editor_graph](data/editor_graph.svg)
-![atm_graph](data/editor.png)
 
 ## Cont
 ```shell
