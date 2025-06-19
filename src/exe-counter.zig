@@ -27,9 +27,9 @@ const Example = enum {
     exit,
     a,
     b,
-    select,
+    yes_or_no,
 
-    fn prinet_enter_state(
+    fn enter_fn(
         val: polystate.sdzx(Example),
         gst: *const GST,
     ) void {
@@ -38,7 +38,7 @@ const Example = enum {
     }
 
     pub fn Wit(val: anytype) type {
-        return polystate.Witness(@This(), GST, prinet_enter_state, polystate.val_to_sdzx(@This(), val));
+        return polystate.Witness(@This(), GST, enter_fn, polystate.val_to_sdzx(@This(), val));
     }
 
     pub const exitST = union(enum) {
@@ -47,16 +47,17 @@ const Example = enum {
             std.debug.print("st: {any}\n", .{ist.*});
         }
     };
-    pub const bST = b_st;
     pub const aST = a_st;
-    pub fn selectST(sa: polystate.sdzx(@This()), sb: polystate.sdzx(@This())) type {
-        return select_st(@This(), .select, sa, sb, GST);
+    pub const bST = b_st;
+
+    pub fn yes_or_noST(sa: polystate.sdzx(@This()), sb: polystate.sdzx(@This())) type {
+        return yes_or_no_st(@This(), sa, sb, GST);
     }
 };
 
 pub const a_st = union(enum) {
     AddOneThenToB: Example.Wit(Example.b),
-    Exit: Example.Wit(.{ Example.select, .{ Example.select, Example.exit, Example.a }, Example.a }),
+    Exit: Example.Wit(.{ Example.yes_or_no, .{ Example.yes_or_no, Example.exit, Example.a }, Example.a }),
 
     pub fn handler(ist: *GST) void {
         switch (genMsg(ist)) {
@@ -91,26 +92,25 @@ pub const b_st = union(enum) {
     }
 };
 
-pub fn select_st(
+pub fn yes_or_no_st(
     T: type,
-    current_st: T,
-    a: polystate.sdzx(T),
-    b: polystate.sdzx(T),
+    yes: polystate.sdzx(T),
+    no: polystate.sdzx(T),
     State: type,
 ) type {
     return union(enum) {
-        SelectA: RWit(a),
-        SelectB: RWit(b),
-        Retry: RWit(polystate.sdzx(T).C(current_st, &.{ a, b })),
+        Yes: Wit(yes),
+        No: Wit(no),
+        Retry: Wit(polystate.sdzx(T).C(T.yes_or_no, &.{ yes, no })),
 
-        fn RWit(val: polystate.sdzx(T)) type {
+        fn Wit(val: polystate.sdzx(T)) type {
             return polystate.Witness(T, State, null, val);
         }
 
         pub fn handler(ist: *State) void {
             switch (genMsg()) {
-                .SelectA => |wit| wit.handler(ist),
-                .SelectB => |wit| wit.handler(ist),
+                .Yes => |wit| wit.handler(ist),
+                .No => |wit| wit.handler(ist),
                 .Retry => |wit| wit.handler(ist),
             }
         }
@@ -120,11 +120,11 @@ pub fn select_st(
 
         fn genMsg() @This() {
             std.debug.print(
-                \\Input your select:
+                \\Yes Or No:
                 \\y={}, n={}
                 \\
             ,
-                .{ a, b },
+                .{ yes, no },
             );
 
             const st = stdIn.readUntilDelimiter(&buf, '\n') catch |err| {
@@ -133,15 +133,11 @@ pub fn select_st(
             };
 
             if (std.mem.eql(u8, st, "y")) {
-                return .SelectA;
+                return .Yes;
             } else if (std.mem.eql(u8, st, "n")) {
-                return .SelectB;
+                return .No;
             } else {
-                std.debug.print(
-                    \\Error input: {s}
-                    \\You cant input: y={}, n={}
-                    \\
-                , .{ st, a, b });
+                std.debug.print("Error input: {s}\n", .{st});
                 return .Retry;
             }
         }
