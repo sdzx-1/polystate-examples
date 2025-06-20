@@ -20,6 +20,7 @@ pub fn main() !void {
 pub const GST = struct {
     counter_a: i64 = 0,
     counter_b: i64 = 0,
+    buf: [10]u8 = @splat(0),
 };
 
 ///Example
@@ -50,8 +51,8 @@ const Example = enum {
     pub const aST = a_st;
     pub const bST = b_st;
 
-    pub fn yes_or_noST(sa: polystate.sdzx(@This()), sb: polystate.sdzx(@This())) type {
-        return yes_or_no_st(@This(), sa, sb, GST);
+    pub fn yes_or_noST(yes: polystate.sdzx(@This()), no: polystate.sdzx(@This())) type {
+        return yes_or_no_st(@This(), GST, yes, no);
     }
 };
 
@@ -93,32 +94,31 @@ pub const b_st = union(enum) {
 };
 
 pub fn yes_or_no_st(
-    T: type,
-    yes: polystate.sdzx(T),
-    no: polystate.sdzx(T),
-    State: type,
+    FST: type,
+    GST1: type,
+    yes: polystate.sdzx(FST),
+    no: polystate.sdzx(FST),
 ) type {
     return union(enum) {
         Yes: Wit(yes),
         No: Wit(no),
-        Retry: Wit(polystate.sdzx(T).C(T.yes_or_no, &.{ yes, no })),
+        Retry: Wit(polystate.sdzx(FST).C(FST.yes_or_no, &.{ yes, no })),
 
-        fn Wit(val: polystate.sdzx(T)) type {
-            return polystate.Witness(T, State, null, val);
+        fn Wit(val: polystate.sdzx(FST)) type {
+            return polystate.Witness(FST, GST1, null, val);
         }
 
-        pub fn handler(ist: *State) void {
-            switch (genMsg()) {
-                .Yes => |wit| wit.handler(ist),
-                .No => |wit| wit.handler(ist),
-                .Retry => |wit| wit.handler(ist),
+        pub fn handler(gst: *GST1) void {
+            switch (genMsg(gst)) {
+                .Yes => |wit| wit.handler(gst),
+                .No => |wit| wit.handler(gst),
+                .Retry => |wit| wit.handler(gst),
             }
         }
 
         const stdIn = std.io.getStdIn().reader();
-        var buf: [10]u8 = @splat(0);
 
-        fn genMsg() @This() {
+        fn genMsg(gst: *GST) @This() {
             std.debug.print(
                 \\Yes Or No:
                 \\y={}, n={}
@@ -127,7 +127,7 @@ pub fn yes_or_no_st(
                 .{ yes, no },
             );
 
-            const st = stdIn.readUntilDelimiter(&buf, '\n') catch |err| {
+            const st = stdIn.readUntilDelimiter(&gst.buf, '\n') catch |err| {
                 std.debug.print("Input error: {any}, retry\n", .{err});
                 return .Retry;
             };
