@@ -2,19 +2,9 @@ const std = @import("std");
 const polystate = @import("polystate");
 
 pub fn main() !void {
-    var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
-    const gpa = gpa_instance.allocator();
-
-    var graph = polystate.Graph.init;
-    try graph.generate(gpa, Example);
-
-    std.debug.print("{}\n", .{graph});
-
-    std.debug.print("----------------------------\n", .{});
     var st: GST = .{};
     const wa = Example.Wit(Example.a){};
     wa.handler_normal(&st);
-    std.debug.print("----------------------------\n", .{});
 }
 
 pub const GST = struct {
@@ -27,7 +17,6 @@ pub const GST = struct {
 const Example = enum {
     exit,
     a,
-    b,
     yes_or_no,
 
     fn enter_fn(
@@ -49,7 +38,6 @@ const Example = enum {
         }
     };
     pub const aST = a_st;
-    pub const bST = b_st;
 
     pub fn yes_or_noST(yes: polystate.sdzx(@This()), no: polystate.sdzx(@This())) type {
         return yes_or_no_st(@This(), GST, yes, no);
@@ -57,12 +45,12 @@ const Example = enum {
 };
 
 pub const a_st = union(enum) {
-    AddOneThenToB: Example.Wit(Example.b),
-    Exit: Example.Wit(.{ Example.yes_or_no, .{ Example.yes_or_no, Example.exit, Example.a }, Example.a }),
+    AddOne: Example.Wit(Example.a),
+    Exit: Example.Wit(.{ Example.yes_or_no, Example.exit, Example.a }),
 
     pub fn handler(ist: *GST) void {
         switch (genMsg(ist)) {
-            .AddOneThenToB => |wit| {
+            .AddOne => |wit| {
                 ist.counter_a += 1;
                 wit.handler(ist);
             },
@@ -72,24 +60,7 @@ pub const a_st = union(enum) {
 
     fn genMsg(ist: *GST) @This() {
         if (ist.counter_a > 3) return .Exit;
-        return .AddOneThenToB;
-    }
-};
-
-pub const b_st = union(enum) {
-    AddOneThenToA: Example.Wit(Example.a),
-
-    pub fn handler(ist: *GST) void {
-        switch (genMsg()) {
-            .AddOneThenToA => |wit| {
-                ist.counter_b += 1;
-                wit.handler(ist);
-            },
-        }
-    }
-
-    fn genMsg() @This() {
-        return .AddOneThenToA;
+        return .AddOne;
     }
 };
 
@@ -102,7 +73,8 @@ pub fn yes_or_no_st(
     return union(enum) {
         Yes: Wit(yes),
         No: Wit(no),
-        Retry: Wit(polystate.sdzx(FST).C(FST.yes_or_no, &.{ yes, no })),
+        // Retry: Wit(polystate.sdzx(FST).C(FST.yes_or_no, &.{ yes, no })),
+        Retry: Wit(polystate.sdzx(FST).C(FST.yes_or_no, &.{ polystate.sdzx(FST).C(FST.yes_or_no, &.{ yes, no }), no })),
 
         fn Wit(val: polystate.sdzx(FST)) type {
             return polystate.Witness(FST, GST1, null, val);
