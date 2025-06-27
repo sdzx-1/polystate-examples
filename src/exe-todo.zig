@@ -13,16 +13,16 @@ pub fn main() !void {
     const window = try generic.init_zgui(gpa, "TodoList");
     defer generic.deinit_zgui(window);
 
+    const StartState = Todo(Main);
     // -------------------------------------
     var graph = polystate.Graph.init;
-    try graph.generate(gpa, Todo);
+    try graph.generate(gpa, StartState);
     std.debug.print("{}\n", .{graph});
     // -------------------------------------
 
-    var gst = GST.init(gpa, "TodoList", window);
-    const wit = Todo.Wit(Todo.main){};
+    var ctx = Context.init(gpa, "TodoList", window);
 
-    var next = wit.conthandler();
+    var next = &StartState.conthandler;
     var exit: bool = false;
 
     while (!exit) {
@@ -32,13 +32,13 @@ pub fn main() !void {
             window.swapBuffers();
         }
 
-        sw: switch (next(&gst)) {
-            .Exit => exit = true,
-            .Wait => {},
-            .Next => |fun| next = fun,
-            .Curr => |fun| {
+        sw: switch (next(&ctx)) {
+            .exit => exit = true,
+            .no_trasition => {},
+            .next => |fun| next = fun,
+            .current => |fun| {
                 next = fun;
-                continue :sw fun(&gst);
+                continue :sw fun(&ctx);
             },
         }
     }
@@ -63,7 +63,7 @@ const TmpEntry = struct {
     }
 };
 
-const GST = struct {
+const Context = struct {
     gpa: std.mem.Allocator,
     todos: std.AutoArrayHashMapUnmanaged(i32, Entry),
     global_id: i32,
@@ -72,10 +72,10 @@ const GST = struct {
     //
     modify: TmpEntry = .{},
     add: TmpEntry = .{},
-    action: generic.Action = .{},
-    are_you_sure: generic.AreYouSure = .{},
+    action: generic.ActionData = .{},
+    are_you_sure: generic.AreYouSureData = .{},
 
-    pub fn init(gpa: std.mem.Allocator, title: []const u8, window: *Window) GST {
+    pub fn init(gpa: std.mem.Allocator, title: []const u8, window: *Window) Context {
         return .{
             .gpa = gpa,
             .todos = .empty,
@@ -107,210 +107,159 @@ const GST = struct {
     }
 };
 
-const ContR = polystate.ContR(GST);
+pub fn Todo(state: type) type {
+    return polystate.FSM(1, Context, null, state);
+}
 
-const Todo = enum {
-    exit,
-    main,
-    add,
-    modify,
-    action, //action add add
-    are_you_sure,
+pub const Modify = union(enum) {
+    modify_entry: Todo(Main),
 
-    fn enter_fn(fst: polystate.sdzx(@This()), gst: *const GST) void {
-        _ = fst;
-        _ = gst;
+    pub fn zgui_render(ctx: *Context) void {
+        ctx.modify.zgui_render();
     }
 
-    pub fn Wit(val: anytype) type {
-        return polystate.Witness(@This(), GST, enter_fn, polystate.val_to_sdzx(Todo, val));
+    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+        const tmp = ctx.modify;
+
+        const idx = blk: {
+            for (0..tmp.title.len) |i| {
+                if (tmp.title[i] == 0) break :blk i;
+            }
+            break :blk 0;
+        };
+
+        const entry: Entry = .{
+            .completed = tmp.completed,
+            .title = ctx.gpa.dupe(u8, tmp.title[0..idx]) catch unreachable,
+            .id = tmp.id,
+        };
+        ctx.update(entry) catch unreachable;
+        return .{ .current = .modify_entry };
+    }
+};
+
+pub const Add = union(enum) {
+    add_entry: Todo(Main),
+
+    pub fn zgui_render(ctx: *Context) void {
+        ctx.add.zgui_render();
     }
 
-    pub const exitST = union(enum) {
-        pub fn conthandler(gst: *GST) ContR {
-            std.debug.print("exit\n", .{});
-            std.debug.print("gst: {any}\n", .{gst});
-            return .Exit;
-        }
-    };
+    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+        const tmp = ctx.add;
 
-    pub fn are_you_sureST(yes: polystate.sdzx(Todo), no: polystate.sdzx(Todo)) type {
-        return generic.are_you_sureST(Todo, GST, enter_fn, generic.zgui_are_you_sure_genMsg, yes, no);
+        const idx = blk: {
+            for (0..tmp.title.len) |i| {
+                if (tmp.title[i] == 0) break :blk i;
+            }
+            break :blk 0;
+        };
+
+        const entry: Entry = .{
+            .completed = tmp.completed,
+            .title = ctx.gpa.dupe(u8, tmp.title[0..idx]) catch unreachable,
+            .id = ctx.fresh_id(),
+        };
+        ctx.update(entry) catch unreachable;
+        return .{ .current = .add_entry };
     }
+};
 
-    pub fn actionST(mst: polystate.sdzx(Todo), jst: polystate.sdzx(Todo)) type {
-        return generic.actionST(Todo, GST, enter_fn, generic.zgui_action_genMsg, mst, jst);
-    }
+pub fn AreYouSure(yes: type, no: type) type {
+    return generic.AreYouSure(Todo, Context, generic.zgui_are_you_sure_genMsg, yes, no);
+}
 
-    pub const modifyST = union(enum) {
-        ModifyEntry: Wit(Todo.main),
+pub fn Action(mst: type, jst: type) type {
+    return generic.Action(Todo, Context, generic.zgui_action_genMsg, mst, jst);
+}
+pub const Exit = polystate.Exit;
 
-        pub fn conthandler(gst: *GST) ContR {
-            switch (genMsg()) {
-                .ModifyEntry => |wit| {
-                    const tmp = gst.modify;
+pub const Main = union(enum) {
+    // zig fmt: off
+    exit             : Todo(AreYouSure(Exit, Main)),
+    add              : Todo(Action(Add, Add)),
+    modify           : Todo(Action(Modify, Modify)), // = .{}, id: i32 },
+    modify_action    : Todo(Action(Action(Exit, Exit), Main)),
+    modify_areYouSure: Todo(Action(AreYouSure(Exit, Exit), Main)),
+    // zig fmt: on
 
-                    const idx = blk: {
-                        for (0..tmp.title.len) |i| {
-                            if (tmp.title[i] == 0) break :blk i;
-                        }
-                        break :blk 0;
-                    };
+    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+        const window = ctx.window;
+        var buf: [30:0]u8 = @splat(0);
 
-                    const entry: Entry = .{
-                        .completed = tmp.completed,
-                        .title = gst.gpa.dupe(u8, tmp.title[0..idx]) catch unreachable,
-                        .id = tmp.id,
-                    };
-                    gst.update(entry) catch unreachable;
-                    return .{ .Curr = wit.conthandler() };
-                },
-            }
+        if (window.shouldClose() or
+            window.getKey(.q) == .press or
+            window.getKey(.escape) == .press)
+            return .{ .next = .exit };
+
+        _ = zgui.begin("main", .{ .flags = .{
+            .no_collapse = true,
+
+            .no_move = true,
+            .no_resize = true,
+        } });
+        defer zgui.end();
+
+        if (zgui.button("Exit", .{})) {
+            return .{ .next = .exit };
         }
 
-        fn genMsg() @This() {
-            return .ModifyEntry;
-        }
-    };
-
-    pub const addST = union(enum) {
-        AddEntry: Wit(Todo.main),
-
-        pub fn conthandler(gst: *GST) ContR {
-            switch (genMsg()) {
-                .AddEntry => |wit| {
-                    const tmp = gst.add;
-
-                    const idx = blk: {
-                        for (0..tmp.title.len) |i| {
-                            if (tmp.title[i] == 0) break :blk i;
-                        }
-                        break :blk 0;
-                    };
-
-                    const entry: Entry = .{
-                        .completed = tmp.completed,
-                        .title = gst.gpa.dupe(u8, tmp.title[0..idx]) catch unreachable,
-                        .id = gst.fresh_id(),
-                    };
-                    gst.update(entry) catch unreachable;
-                    return .{ .Curr = wit.conthandler() };
-                },
-            }
+        if (zgui.button("Add", .{})) {
+            return .{ .next = .add };
         }
 
-        fn genMsg() @This() {
-            return .AddEntry;
-        }
-    };
-
-    pub const mainST = union(enum) {
-        // zig fmt: off
-        Exit            : Wit(.{ Todo.are_you_sure, Todo.exit, Todo.main }),
-        Add             : Wit(.{ Todo.action, Todo.add, Todo.add }),
-        Delete          : struct { wit: Wit(Todo.main) = .{}, id: i32 },
-        Modify          : struct { wit: Wit(.{ Todo.action, Todo.modify, Todo.modify }) = .{}, id: i32 },
-        ModifyAction    : Wit(.{ Todo.action, Todo.action, Todo.main }),
-        ModifyAreYouSure: Wit(.{ Todo.action, Todo.are_you_sure, Todo.main }),
-        // zig fmt: on
-
-        pub fn conthandler(gst: *GST) ContR {
-            if (genMsg(gst)) |msg| {
-                switch (msg) {
-                    .Exit => |wit| return .{ .Next = wit.conthandler() },
-                    .Add => |wit| return .{ .Next = wit.conthandler() },
-                    .ModifyAction => |wit| return .{ .Next = wit.conthandler() },
-                    .ModifyAreYouSure => |wit| return .{ .Next = wit.conthandler() },
-                    .Delete => |val| {
-                        gst.delete(val.id) catch unreachable;
-                        return .{ .Next = val.wit.conthandler() };
-                    },
-                    .Modify => |val| {
-                        const v = gst.todos.get(val.id).?;
-                        gst.modify = .{
-                            .id = v.id,
-                            .completed = v.completed,
-                        };
-                        for (v.title, 0..) |vv, i| {
-                            gst.modify.title[i] = vv;
-                        }
-                        return .{ .Next = val.wit.conthandler() };
-                    },
-                }
-            } else return .Wait;
+        if (zgui.button("Modify Action", .{})) {
+            return .{ .next = .modify_action };
         }
 
-        fn genMsg(gst: *const GST) ?@This() {
-            const window = gst.window;
-            var buf: [30:0]u8 = @splat(0);
+        if (zgui.button("Modify Are You Sure", .{})) {
+            return .{ .next = .modify_areYouSure };
+        }
 
-            if (window.shouldClose() or
-                window.getKey(.q) == .press or
-                window.getKey(.escape) == .press)
-                return .Exit;
+        _ = zgui.beginTable("TodoList", .{
+            .column = 4,
+            .flags = .{ .scroll_y = true },
+        });
+        defer zgui.endTable();
+        zgui.tableNextRow(.{ .row_flags = .{ .headers = true } });
+        _ = zgui.tableNextColumn();
+        zgui.text("Title", .{});
+        _ = zgui.tableNextColumn();
+        zgui.text("Completed", .{});
 
-            _ = zgui.begin("main", .{ .flags = .{
-                .no_collapse = true,
-
-                .no_move = true,
-                .no_resize = true,
-            } });
-            defer zgui.end();
-
-            if (zgui.button("Exit", .{})) {
-                return .Exit;
-            }
-
-            if (zgui.button("Add", .{})) {
-                return .Add;
-            }
-
-            if (zgui.button("Modify Action", .{})) {
-                return .ModifyAction;
-            }
-
-            if (zgui.button("Modify Are You Sure", .{})) {
-                return .ModifyAreYouSure;
-            }
-
-            _ = zgui.beginTable("TodoList", .{
-                .column = 4,
-                .flags = .{ .scroll_y = true },
-            });
-            defer zgui.endTable();
-            zgui.tableNextRow(.{ .row_flags = .{ .headers = true } });
+        var iter = ctx.todos.iterator();
+        while (iter.next()) |entry| {
+            zgui.tableNextRow(.{});
             _ = zgui.tableNextColumn();
-            zgui.text("Title", .{});
+            zgui.text("{s}", .{entry.value_ptr.title});
             _ = zgui.tableNextColumn();
-            zgui.text("Completed", .{});
+            zgui.text("{}", .{entry.value_ptr.completed});
+            _ = zgui.tableNextColumn();
+            const d_name = std.fmt.bufPrintZ(
+                &buf,
+                "Delete ##{d}",
+                .{entry.key_ptr.*},
+            ) catch unreachable;
+            if (zgui.button(d_name, .{})) ctx.delete(entry.key_ptr.*) catch unreachable;
+            _ = zgui.tableNextColumn();
+            const m_name = std.fmt.bufPrintZ(
+                &buf,
+                "Modify ##{d}",
+                .{entry.key_ptr.*},
+            ) catch unreachable;
+            if (zgui.button(m_name, .{})) {
+                const v = ctx.todos.get(entry.key_ptr.*).?;
+                ctx.modify = .{
+                    .id = v.id,
+                    .completed = v.completed,
+                };
+                for (v.title, 0..) |vv, i| {
+                    ctx.modify.title[i] = vv;
+                }
 
-            var iter = gst.todos.iterator();
-            while (iter.next()) |entry| {
-                zgui.tableNextRow(.{});
-                _ = zgui.tableNextColumn();
-                zgui.text("{s}", .{entry.value_ptr.title});
-                _ = zgui.tableNextColumn();
-                zgui.text("{}", .{entry.value_ptr.completed});
-                _ = zgui.tableNextColumn();
-                const d_name = std.fmt.bufPrintZ(
-                    &buf,
-                    "Delete ##{d}",
-                    .{entry.key_ptr.*},
-                ) catch unreachable;
-                if (zgui.button(d_name, .{})) {
-                    return .{ .Delete = .{ .id = entry.key_ptr.* } };
-                }
-                _ = zgui.tableNextColumn();
-                const m_name = std.fmt.bufPrintZ(
-                    &buf,
-                    "Modify ##{d}",
-                    .{entry.key_ptr.*},
-                ) catch unreachable;
-                if (zgui.button(m_name, .{})) {
-                    return .{ .Modify = .{ .id = entry.key_ptr.* } };
-                }
+                return .{ .next = .modify };
             }
-            return null;
         }
-    };
+        return .no_trasition;
+    }
 };

@@ -8,7 +8,7 @@ const gl = zopengl.bindings;
 const Window = glfw.Window;
 const content_dir = @import("build_options").content_dir;
 
-pub const AreYouSure = struct {
+pub const AreYouSureData = struct {
     yes: [20:0]u8 = blk: {
         var tmp: [20:0]u8 = @splat(0);
         @memcpy(tmp[0..3], "YES");
@@ -29,40 +29,72 @@ pub const AreYouSure = struct {
     }
 };
 
-pub fn are_you_sureST(
-    FST: type,
-    GST: type,
-    enter_fn: ?fn (polystate.sdzx(FST), *const GST) void,
-    ui_fn: fn (GST: type, *const GST) ?bool,
-    yes: polystate.sdzx(FST),
-    no: polystate.sdzx(FST),
+pub fn AreYouSure(
+    FSM: fn (type) type,
+    Context: type,
+    ui_fn: fn (Context: type, *const Context) ?bool,
+    Yes: type,
+    No: type,
 ) type {
     return union(enum) {
-        Yes: polystate.Witness(FST, GST, enter_fn, yes),
-        No: polystate.Witness(FST, GST, enter_fn, no),
+        yes: FSM(Yes),
+        no: FSM(No),
 
-        pub fn conthandler(gst: *GST) polystate.ContR(GST) {
-            if (genMsg(gst)) |msg| {
-                switch (msg) {
-                    .Yes => |wit| {
-                        return .{ .Next = wit.conthandler() };
-                    },
-                    .No => |wit| {
-                        return .{ .Next = wit.conthandler() };
-                    },
-                }
-            } else return .Wait;
+        pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+            if (ui_fn(Context, ctx)) |res| {
+                if (res) return .{ .next = .yes } else return .{ .next = .no };
+            } else return .no_trasition;
         }
 
-        fn genMsg(gst: *const GST) ?@This() {
-            if (ui_fn(GST, gst)) |res| {
-                if (res) return .Yes else return .No;
-            } else return null;
+        pub fn zgui_render(ctx: *Context) void {
+            ctx.are_you_sure.zgui_render();
         }
     };
 }
 
-pub const Action = struct {
+pub fn zgui_are_you_sure_genMsg(Context: type, ctx: *Context) ?bool {
+    const window = ctx.window;
+    var buf: [360]u8 = @splat(0);
+    const str = std.fmt.bufPrintZ(
+        &buf,
+        "are_you_sure",
+        .{},
+    ) catch unreachable;
+    _ = zgui.begin(str, .{ .flags = .{
+        .no_collapse = true,
+        .no_move = true,
+        .no_resize = true,
+    } });
+
+    defer zgui.end();
+
+    zgui.pushStyleColor4f(.{ .idx = .button, .c = .{
+        ctx.are_you_sure.color[0],
+        ctx.are_you_sure.color[1],
+        ctx.are_you_sure.color[2],
+        1,
+    } });
+    defer zgui.popStyleColor(.{});
+
+    zgui.pushStrId("are_you_sure yes");
+    defer zgui.popId();
+    if (zgui.button(&ctx.are_you_sure.yes, .{})) {
+        return true;
+    }
+
+    zgui.pushStrId("are_you_sure no");
+    defer zgui.popId();
+    if (zgui.button(&ctx.are_you_sure.no, .{})) {
+        return false;
+    }
+
+    if (window.getKey(.y) == .press) return true;
+    if (window.getKey(.n) == .press) return false;
+
+    return null;
+}
+
+pub const ActionData = struct {
     ok: [20:0]u8 = blk: {
         var tmp: [20:0]u8 = @splat(0);
         tmp[0] = 'O';
@@ -79,46 +111,30 @@ pub const Action = struct {
     }
 };
 
-pub fn actionST(
-    FST: type,
-    GST: type,
-    enter_fn: ?fn (polystate.sdzx(FST), *const GST) void,
-    ui_fn: fn (GST: type, comptime []const u8, *GST) bool,
-    mst: polystate.sdzx(FST),
-    jst: polystate.sdzx(FST),
+pub fn Action(
+    FSM: fn (type) type,
+    Context: type,
+    ui_fn: fn (Context: type, type, *Context) bool,
+    mst: type, //Modify State
+    jst: type, //Jump to State
 ) type {
     return union(enum) {
-        OK: polystate.Witness(FST, GST, enter_fn, jst),
+        OK: FSM(jst),
 
-        const nst = switch (mst) {
-            .Term => |v| @tagName(v),
-            .Fun => |val| @tagName(val.fun),
-        };
-        pub fn conthandler(gst: *GST) polystate.ContR(GST) {
-            if (genMsg(gst)) |msg| {
-                switch (msg) {
-                    .OK => |wit| {
-                        return .{ .Next = wit.conthandler() };
-                    },
-                }
-            } else return .Wait;
+        pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+            if (ui_fn(Context, mst, ctx)) return .{ .current = .OK };
+            return .no_trasition;
         }
 
-        fn genMsg(gst: *GST) ?@This() {
-            if (ui_fn(GST, nst, gst)) return .OK;
-            return null;
+        pub fn zgui_render(ctx: *Context) void {
+            ctx.action.zgui_render();
         }
     };
 }
 
-pub fn zgui_are_you_sure_genMsg(GST: type, gst: *GST) ?bool {
-    const window = gst.window;
-    var buf: [360]u8 = @splat(0);
-    const str = std.fmt.bufPrintZ(
-        &buf,
-        "are_you_sure",
-        .{},
-    ) catch unreachable;
+pub fn zgui_action_genMsg(Context: type, nst: type, ctx: *Context) bool {
+    var buf: [500]u8 = @splat(0);
+    const str = std.fmt.bufPrintZ(&buf, "action({s})", .{@typeName(nst)}) catch unreachable;
     _ = zgui.begin(str, .{ .flags = .{
         .no_collapse = true,
         .no_move = true,
@@ -126,56 +142,19 @@ pub fn zgui_are_you_sure_genMsg(GST: type, gst: *GST) ?bool {
     } });
 
     defer zgui.end();
+    nst.zgui_render(ctx);
 
     zgui.pushStyleColor4f(.{ .idx = .button, .c = .{
-        gst.are_you_sure.color[0],
-        gst.are_you_sure.color[1],
-        gst.are_you_sure.color[2],
-        1,
-    } });
-    defer zgui.popStyleColor(.{});
-
-    zgui.pushStrId("are_you_sure yes");
-    defer zgui.popId();
-    if (zgui.button(&gst.are_you_sure.yes, .{})) {
-        return true;
-    }
-
-    zgui.pushStrId("are_you_sure no");
-    defer zgui.popId();
-    if (zgui.button(&gst.are_you_sure.no, .{})) {
-        return false;
-    }
-
-    if (window.getKey(.y) == .press) return true;
-    if (window.getKey(.n) == .press) return false;
-
-    return null;
-}
-
-pub fn zgui_action_genMsg(GST: type, comptime nst: []const u8, gst: *GST) bool {
-    var buf: [30]u8 = @splat(0);
-    const str = std.fmt.bufPrintZ(&buf, "action({s})", .{nst}) catch unreachable;
-    _ = zgui.begin(str, .{ .flags = .{
-        .no_collapse = true,
-        .no_move = true,
-        .no_resize = true,
-    } });
-
-    defer zgui.end();
-    @field(gst, nst).zgui_render();
-
-    zgui.pushStyleColor4f(.{ .idx = .button, .c = .{
-        gst.action.color[0],
-        gst.action.color[1],
-        gst.action.color[2],
+        ctx.action.color[0],
+        ctx.action.color[1],
+        ctx.action.color[2],
         1,
     } });
     defer zgui.popStyleColor(.{});
 
     zgui.pushStrId("action ok");
     defer zgui.popId();
-    if (zgui.button(&gst.action.ok, .{})) {
+    if (zgui.button(&ctx.action.ok, .{})) {
         return true;
     }
     return false;

@@ -5,140 +5,90 @@ pub fn main() !void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa = gpa_instance.allocator();
 
+    const StateA = Example(A);
     var graph = polystate.Graph.init;
-    try graph.generate(gpa, Example);
+    try graph.generate(gpa, StateA);
 
     std.debug.print("{}\n", .{graph});
 
     std.debug.print("----------------------------\n", .{});
-    var st: GST = .{};
-    const wa = Example.Wit(Example.a){};
-    wa.handler_normal(&st);
+    var ctx: Context = .{};
+    StateA.handler_normal(&ctx);
+
+    std.debug.print("ctx: {any}\n", .{ctx});
     std.debug.print("----------------------------\n", .{});
 }
 
-pub const GST = struct {
+pub const Context = struct {
     counter_a: i64 = 0,
     counter_b: i64 = 0,
     buf: [10]u8 = @splat(0),
 };
 
 ///Example
-const Example = enum {
-    exit,
-    a,
-    b,
-    yes_or_no,
+pub fn Example(Current: type) type {
+    return polystate.FSM(0, Context, enter_fn, Current);
+}
 
-    fn enter_fn(
-        val: polystate.sdzx(Example),
-        gst: *const GST,
-    ) void {
-        std.debug.print("{} ", .{val});
-        std.debug.print("gst: {any}\n", .{gst.*});
-    }
+fn enter_fn(
+    ctx: *Context,
+    Curr: type,
+) void {
+    std.debug.print("{st} ", .{@typeName(Curr)});
+    std.debug.print("ctx: {any}\n", .{ctx.*});
+}
 
-    pub fn Wit(val: anytype) type {
-        return polystate.Witness(@This(), GST, enter_fn, polystate.val_to_sdzx(@This(), val));
-    }
+pub const A = union(enum) {
+    to_B: Example(B),
+    exit: Example(YesOrNo(YesOrNo(polystate.Exit, B), B)),
 
-    pub const exitST = union(enum) {
-        pub fn handler(ist: *GST) void {
-            std.debug.print("exit\n", .{});
-            std.debug.print("st: {any}\n", .{ist.*});
-        }
-    };
-    pub const aST = a_st;
-    pub const bST = b_st;
-
-    pub fn yes_or_noST(yes: polystate.sdzx(@This()), no: polystate.sdzx(@This())) type {
-        return yes_or_no_st(@This(), GST, yes, no);
+    pub fn handler(ctx: *Context) @This() {
+        if (ctx.counter_a > 30) return .exit;
+        ctx.counter_a += 1;
+        return .to_B;
     }
 };
 
-pub const a_st = union(enum) {
-    AddOneThenToB: Example.Wit(Example.b),
-    Exit: Example.Wit(.{ Example.yes_or_no, .{ Example.yes_or_no, Example.exit, Example.a }, Example.a }),
+pub const B = union(enum) {
+    to_A: Example(A),
 
-    pub fn handler(ist: *GST) void {
-        switch (genMsg(ist)) {
-            .AddOneThenToB => |wit| {
-                ist.counter_a += 1;
-                wit.handler(ist);
-            },
-            .Exit => |wit| wit.handler(ist),
-        }
-    }
-
-    fn genMsg(ist: *GST) @This() {
-        if (ist.counter_a > 3) return .Exit;
-        return .AddOneThenToB;
+    pub fn handler(ctx: *Context) @This() {
+        ctx.counter_b += 1;
+        return .to_A;
     }
 };
 
-pub const b_st = union(enum) {
-    AddOneThenToA: Example.Wit(Example.a),
-
-    pub fn handler(ist: *GST) void {
-        switch (genMsg()) {
-            .AddOneThenToA => |wit| {
-                ist.counter_b += 1;
-                wit.handler(ist);
-            },
-        }
-    }
-
-    fn genMsg() @This() {
-        return .AddOneThenToA;
-    }
-};
-
-pub fn yes_or_no_st(
-    FST: type,
-    GST1: type,
-    yes: polystate.sdzx(FST),
-    no: polystate.sdzx(FST),
+pub fn YesOrNo(
+    Yes: type,
+    No: type,
 ) type {
     return union(enum) {
-        Yes: Wit(yes),
-        No: Wit(no),
-        Retry: Wit(polystate.sdzx(FST).C(FST.yes_or_no, &.{ yes, no })),
-
-        fn Wit(val: polystate.sdzx(FST)) type {
-            return polystate.Witness(FST, GST1, null, val);
-        }
-
-        pub fn handler(gst: *GST1) void {
-            switch (genMsg(gst)) {
-                .Yes => |wit| wit.handler(gst),
-                .No => |wit| wit.handler(gst),
-                .Retry => |wit| wit.handler(gst),
-            }
-        }
+        yes: Example(Yes),
+        no: Example(No),
+        retry: Example(YesOrNo(Yes, No)),
 
         const stdIn = std.io.getStdIn().reader();
-
-        fn genMsg(gst: *GST) @This() {
+        pub fn handler(ctx: *Context) @This() {
             std.debug.print(
                 \\Yes Or No:
-                \\y={}, n={}
+                \\y={s}, n={s}
                 \\
             ,
-                .{ yes, no },
+                .{ @typeName(Yes), @typeName(No) },
             );
 
-            const st = stdIn.readUntilDelimiter(&gst.buf, '\n') catch |err| {
+            const st = stdIn.readUntilDelimiter(&ctx.buf, '\n') catch |err| {
                 std.debug.print("Input error: {any}, retry\n", .{err});
-                return .Retry;
+                return .retry;
             };
 
             if (std.mem.eql(u8, st, "y")) {
-                return .Yes;
+                return .yes;
             } else if (std.mem.eql(u8, st, "n")) {
-                return .No;
+                return .no;
             } else {
                 std.debug.print("Error input: {s}\n", .{st});
-                return .Retry;
+                return .retry;
             }
         }
     };
