@@ -6,14 +6,6 @@ const glfw = @import("zglfw");
 const generic = @import("generic.zig");
 const Window = glfw.Window;
 
-comptime {
-    const fsm_state_map = polystate.collect_fsm_state(20, Atm(Ready));
-    const avl = fsm_state_map.avl;
-    for (0..avl.len) |i| {
-        _ = i;
-    }
-}
-
 pub fn main() anyerror!void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa = gpa_instance.allocator();
