@@ -10,24 +10,15 @@ pub fn main() !void {
 
     var graph = polystate.Graph.init;
 
-    try graph.generate(gpa, StateA);
+    graph.generate(gpa, StateA);
 
     std.debug.print("{}\n", .{graph});
 
     var ctx: Context = .{ .a = 0, .b = 0 };
-    var next = &StateA.conthandler;
-    var exit: bool = false;
-
-    while (!exit) {
-        sw: switch (next(&ctx)) {
-            .exit => exit = true,
-            .no_trasition => {},
-            .next => |fun| next = fun,
-            .current => |fun| {
-                next = fun;
-                continue :sw fun(&ctx);
-            },
-        }
+    const Runner = polystate.Runner(20, false, StateA);
+    var curr_id: ?Runner.StateId = Runner.fsm_state_to_state_id(StateA);
+    while (curr_id) |id| {
+        curr_id = Runner.run_conthandler(id, &ctx);
     }
 }
 
@@ -37,7 +28,15 @@ pub const Context = struct {
 };
 
 pub fn Example(Current: type) type {
-    return polystate.FSM(0, Context, null, Current);
+    return polystate.FSM("Cont", Context, enter_fn, Current);
+}
+
+fn enter_fn(
+    ctx: *Context,
+    Curr: type,
+) void {
+    std.debug.print("{st} ", .{@typeName(Curr)});
+    std.debug.print("ctx: {any}\n", .{ctx.*});
 }
 
 pub const A = union(enum) {
@@ -57,6 +56,32 @@ pub const B = union(enum) {
 
     pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
         std.debug.print("b: {d}\n", .{ctx.b});
+        ctx.b += 1;
+        return .{ .next = .to_A };
+    }
+};
+
+pub fn Example1(Current: type) type {
+    return polystate.FSM("Cont1", Context, null, Current);
+}
+
+pub const A1 = union(enum) {
+    exit: Example1(polystate.Exit),
+    to_B: Example1(B1),
+
+    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+        std.debug.print("a1: {d}\n", .{ctx.a});
+        if (ctx.a > 5) return .{ .next = .exit };
+        ctx.a += 1;
+        return .{ .next = .to_B };
+    }
+};
+
+pub const B1 = union(enum) {
+    to_A: Example1(A1),
+
+    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+        std.debug.print("b1: {d}\n", .{ctx.b});
         ctx.b += 1;
         return .{ .next = .to_A };
     }

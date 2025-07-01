@@ -6,6 +6,14 @@ const glfw = @import("zglfw");
 const generic = @import("generic.zig");
 const Window = glfw.Window;
 
+comptime {
+    const fsm_state_map = polystate.collect_fsm_state(20, Atm(Ready));
+    const avl = fsm_state_map.avl;
+    for (0..avl.len) |i| {
+        _ = i;
+    }
+}
+
 pub fn main() anyerror!void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa = gpa_instance.allocator();
@@ -17,29 +25,19 @@ pub fn main() anyerror!void {
     const StateReady = Atm(Ready);
 
     var graph = polystate.Graph.init;
-    try graph.generate(gpa, StateReady);
+    graph.generate(gpa, StateReady);
 
     std.debug.print("{}\n", .{graph});
 
-    var next = &StateReady.conthandler;
-    var exit: bool = false;
-
-    while (!exit) {
+    const Runner = polystate.Runner(20, false, StateReady);
+    var curr_id: ?Runner.StateId = Runner.fsm_state_to_state_id(StateReady);
+    while (curr_id) |id| {
         generic.clear_and_init(window);
         defer {
             zgui.backend.draw();
             window.swapBuffers();
         }
-
-        sw: switch (next(&ctx)) {
-            .exit => exit = true,
-            .no_trasition => {},
-            .next => |fun| next = fun,
-            .current => |fun| {
-                next = fun;
-                continue :sw fun(&ctx);
-            },
-        }
+        curr_id = Runner.run_conthandler(id, &ctx);
     }
 }
 
@@ -58,7 +56,7 @@ pub const Context = struct {
 };
 
 pub fn Atm(Current: type) type {
-    return polystate.FSM(0, Context, null, Current);
+    return polystate.FSM("Atm", Context, null, Current);
 }
 
 pub fn AreYouSure(yes: type, no: type) type {

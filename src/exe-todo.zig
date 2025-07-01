@@ -16,31 +16,21 @@ pub fn main() !void {
     const StartState = Todo(Main);
     // -------------------------------------
     var graph = polystate.Graph.init;
-    try graph.generate(gpa, StartState);
+    graph.generate(gpa, StartState);
     std.debug.print("{}\n", .{graph});
     // -------------------------------------
 
     var ctx = Context.init(gpa, "TodoList", window);
 
-    var next = &StartState.conthandler;
-    var exit: bool = false;
-
-    while (!exit) {
+    const Runner = polystate.Runner(20, false, StartState);
+    var curr_id: ?Runner.StateId = Runner.fsm_state_to_state_id(StartState);
+    while (curr_id) |id| {
         generic.clear_and_init(window);
         defer {
             zgui.backend.draw();
             window.swapBuffers();
         }
-
-        sw: switch (next(&ctx)) {
-            .exit => exit = true,
-            .no_trasition => {},
-            .next => |fun| next = fun,
-            .current => |fun| {
-                next = fun;
-                continue :sw fun(&ctx);
-            },
-        }
+        curr_id = Runner.run_conthandler(id, &ctx);
     }
 }
 
@@ -107,8 +97,14 @@ const Context = struct {
     }
 };
 
+fn enter_fn(ctx: *Context, state: type) void {
+    _ = ctx;
+    // std.debug.print("{s}\n", .{@typeName(state)});
+    _ = state;
+}
+
 pub fn Todo(state: type) type {
-    return polystate.FSM(1, Context, null, state);
+    return polystate.FSM("Todo", Context, enter_fn, state);
 }
 
 pub const Modify = union(enum) {

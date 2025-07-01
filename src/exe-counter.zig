@@ -7,13 +7,16 @@ pub fn main() !void {
 
     const StateA = Example(A);
     var graph = polystate.Graph.init;
-    try graph.generate(gpa, StateA);
+    graph.generate(gpa, StateA);
 
     std.debug.print("{}\n", .{graph});
 
     std.debug.print("----------------------------\n", .{});
+
     var ctx: Context = .{};
-    StateA.handler_normal(&ctx);
+    const Runner = polystate.Runner(20, true, StateA);
+    const curr_id: Runner.StateId = Runner.fsm_state_to_state_id(StateA);
+    Runner.run_handler(curr_id, &ctx);
 
     std.debug.print("ctx: {any}\n", .{ctx});
     std.debug.print("----------------------------\n", .{});
@@ -27,15 +30,17 @@ pub const Context = struct {
 
 ///Example
 pub fn Example(Current: type) type {
-    return polystate.FSM(0, Context, enter_fn, Current);
+    return polystate.FSM("Counter", Context, enter_fn, Current);
 }
 
 fn enter_fn(
     ctx: *Context,
     Curr: type,
 ) void {
-    std.debug.print("{st} ", .{@typeName(Curr)});
-    std.debug.print("ctx: {any}\n", .{ctx.*});
+    _ = ctx;
+    _ = Curr;
+    // std.debug.print("{st} ", .{@typeName(Curr)});
+    // std.debug.print("ctx: {any}\n", .{ctx.*});
 }
 
 pub const A = union(enum) {
@@ -43,7 +48,7 @@ pub const A = union(enum) {
     exit: Example(YesOrNo(YesOrNo(polystate.Exit, B), B)),
 
     pub fn handler(ctx: *Context) @This() {
-        if (ctx.counter_a > 30) return .exit;
+        if (ctx.counter_a > 3_000000000) return .exit;
         ctx.counter_a += 1;
         return .to_B;
     }
