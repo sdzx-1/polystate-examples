@@ -1,10 +1,10 @@
 const std = @import("std");
-const polystate = @import("polystate");
-const Witness = polystate.Witness;
+const ps = @import("polystate");
 const zgui = @import("zgui");
 const glfw = @import("zglfw");
 const generic = @import("generic.zig");
 const Window = glfw.Window;
+const Adler32 = std.hash.Adler32;
 
 pub fn main() anyerror!void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,22 +14,21 @@ pub fn main() anyerror!void {
     defer generic.deinit_zgui(window);
 
     var ctx = Context.init(window);
-    const StateReady = Atm(Ready);
+    const StateReady = Atm(.next, Ready);
 
-    var graph = polystate.Graph.init;
+    var graph = ps.Graph.init;
     graph.generate(gpa, StateReady);
-
     std.debug.print("{}\n", .{graph});
 
-    const Runner = polystate.Runner(20, false, StateReady);
-    var curr_id: ?Runner.StateId = Runner.fsm_state_to_state_id(StateReady);
+    const Runner = ps.Runner(20, true, StateReady);
+    var curr_id: ?Runner.StateId = Runner.state_to_id(Ready);
     while (curr_id) |id| {
         generic.clear_and_init(window);
         defer {
             zgui.backend.draw();
             window.swapBuffers();
         }
-        curr_id = Runner.run_conthandler(id, &ctx);
+        curr_id = Runner.run_handler(id, &ctx);
     }
 }
 
@@ -47,39 +46,41 @@ pub const Context = struct {
     }
 };
 
-pub fn Atm(Current: type) type {
-    return polystate.FSM("Atm", Context, null, Current);
+pub fn Atm(meth: ps.Method, Current: type) type {
+    return ps.FSM("Atm", .suspendable, Context, null, meth, Current);
 }
 
 pub fn AreYouSure(yes: type, no: type) type {
-    return generic.AreYouSure(Atm, Context, generic.zgui_are_you_sure_genMsg, yes, no);
+    return generic.AreYouSure(Atm, yes, no);
 }
 
 pub const Ready = union(enum) {
-    insert_card: Atm(CheckPin(Session, CheckPin(Session, CheckPin(Session, Ready)))),
-    exit: Atm(AreYouSure(AreYouSure(polystate.Exit, Ready), Ready)),
+    insert_card: Atm(.next, CheckPin(Session, CheckPin(Session, CheckPin(Session, Ready)))),
+    exit: Atm(.current, AreYouSure(AreYouSure(ps.Exit, Ready), Ready)),
+    no_trasition: Atm(.next, @This()),
 
-    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+    pub fn handler(ctx: *Context) @This() {
         const window = ctx.window;
         if (window.shouldClose() or
             window.getKey(.q) == .press or
             window.getKey(.escape) == .press)
-            return .{ .next = .exit };
+            return .exit;
 
         _ = zgui.begin("ready", .{ .flags = .{ .no_collapse = true, .no_move = true, .no_resize = true } });
         defer zgui.end();
-        if (zgui.button("Isnert card", .{})) return .{ .next = .insert_card };
-        if (zgui.button("Exit!", .{})) return .{ .next = .exit };
+        if (zgui.button("Isnert card", .{})) return .insert_card;
+        if (zgui.button("Exit!", .{})) return .exit;
         return .no_trasition;
     }
 };
 
 pub fn CheckPin(Success: type, Failed: type) type {
     return union(enum) {
-        successed: Atm(Success),
-        failed: Atm(Failed),
+        successed: Atm(.next, Success),
+        failed: Atm(.next, Failed),
+        no_trasition: Atm(.next, @This()),
 
-        pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+        pub fn handler(ctx: *Context) @This() {
             _ = zgui.begin("CheckPin", .{ .flags = .{
                 .no_collapse = true,
 
@@ -99,11 +100,11 @@ pub fn CheckPin(Success: type, Failed: type) type {
                 if (std.mem.eql(u8, &ctx.tmpPin, &ctx.pin)) {
                     ctx.tmpPin = .{ 0, 0, 0, 0 };
                     ctx.take_amount = @divTrunc(@as(i32, @intCast(ctx.amount)), 2);
-                    return .{ .next = .successed };
+                    return .successed;
                 } else {
                     ctx.tmpPin = .{ 0, 0, 0, 0 };
                     std.debug.print("Error Pin!! {d}\n", .{ctx.tmpPin});
-                    return .{ .next = .failed };
+                    return .failed;
                 }
             }
             return .no_trasition;
@@ -112,9 +113,10 @@ pub fn CheckPin(Success: type, Failed: type) type {
 }
 
 pub const Session = union(enum) {
-    eject_card: Atm(Ready),
+    eject_card: Atm(.next, Ready),
+    no_trasition: Atm(.next, @This()),
 
-    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+    pub fn handler(ctx: *Context) @This() {
         _ = zgui.begin("Session", .{ .flags = .{
             .no_collapse = true,
             .no_move = true,
@@ -136,7 +138,7 @@ pub const Session = union(enum) {
                 ctx.take_amount = @divTrunc(@as(i32, @intCast(ctx.amount)), 2);
             } else std.debug.print("insufficient balance\n", .{});
         }
-        if (zgui.button("Eject card", .{})) return .{ .next = .eject_card };
+        if (zgui.button("Eject card", .{})) return .eject_card;
         return .no_trasition;
     }
 };

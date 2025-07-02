@@ -1,6 +1,5 @@
 const std = @import("std");
-const polystate = @import("polystate");
-const Witness = polystate.Witness;
+const ps = @import("polystate");
 const zgui = @import("zgui");
 const glfw = @import("zglfw");
 const zopengl = @import("zopengl");
@@ -30,19 +29,19 @@ pub const AreYouSureData = struct {
 };
 
 pub fn AreYouSure(
-    FSM: fn (type) type,
-    Context: type,
-    ui_fn: fn (Context: type, *const Context) ?bool,
+    FSM: fn (ps.Method, type) type,
     Yes: type,
     No: type,
 ) type {
+    const Context = FSM(.current, ps.Exit).Context;
     return union(enum) {
-        yes: FSM(Yes),
-        no: FSM(No),
+        yes: FSM(.next, Yes),
+        no: FSM(.next, No),
+        no_trasition: FSM(.next, @This()),
 
-        pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
-            if (ui_fn(Context, ctx)) |res| {
-                if (res) return .{ .next = .yes } else return .{ .next = .no };
+        pub fn handler(ctx: *Context) @This() {
+            if (zgui_are_you_sure_genMsg(Context, ctx)) |res| {
+                if (res) return .yes else return .no;
             } else return .no_trasition;
         }
 
@@ -112,17 +111,17 @@ pub const ActionData = struct {
 };
 
 pub fn Action(
-    FSM: fn (type) type,
-    Context: type,
-    ui_fn: fn (Context: type, type, *Context) bool,
+    FSM: fn (ps.Method, type) type,
     mst: type, //Modify State
     jst: type, //Jump to State
 ) type {
+    const Context = FSM(.next, ps.Exit).Context;
     return union(enum) {
-        OK: FSM(jst),
+        OK: FSM(.next, jst),
+        no_trasition: FSM(.next, Action(FSM, mst, jst)),
 
-        pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
-            if (ui_fn(Context, mst, ctx)) return .{ .current = .OK };
+        pub fn handler(ctx: *Context) @This() {
+            if (zgui_action_genMsg(Context, mst, ctx)) return .OK;
             return .no_trasition;
         }
 

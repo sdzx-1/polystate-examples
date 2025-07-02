@@ -1,12 +1,12 @@
 const std = @import("std");
-const polystate = @import("polystate");
+const ps = @import("polystate");
 
 pub fn main() !void {
     var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
     const gpa = gpa_instance.allocator();
 
-    const StateA = Example(A);
-    var graph = polystate.Graph.init;
+    const StateA = Example(.next, A);
+    var graph = ps.Graph.init;
     graph.generate(gpa, StateA);
 
     std.debug.print("{}\n", .{graph});
@@ -14,9 +14,12 @@ pub fn main() !void {
     std.debug.print("----------------------------\n", .{});
 
     var ctx: Context = .{};
-    const Runner = polystate.Runner(20, true, StateA);
-    const curr_id: Runner.StateId = Runner.fsm_state_to_state_id(StateA);
-    Runner.run_handler(curr_id, &ctx);
+    const Runner = ps.Runner(20, true, StateA);
+    var curr_id: ?Runner.StateId = Runner.state_to_id(A);
+
+    while (curr_id) |id| {
+        curr_id = Runner.run_handler(id, &ctx);
+    }
 
     std.debug.print("ctx: {any}\n", .{ctx});
     std.debug.print("----------------------------\n", .{});
@@ -29,8 +32,8 @@ pub const Context = struct {
 };
 
 ///Example
-pub fn Example(Current: type) type {
-    return polystate.FSM("Counter", Context, enter_fn, Current);
+pub fn Example(method: ps.Method, Current: type) type {
+    return ps.FSM("Counter", .suspendable, Context, enter_fn, method, Current);
 }
 
 fn enter_fn(
@@ -44,18 +47,18 @@ fn enter_fn(
 }
 
 pub const A = union(enum) {
-    to_B: Example(B),
-    exit: Example(YesOrNo(YesOrNo(polystate.Exit, B), B)),
+    to_B: Example(.current, B),
+    exit: Example(.next, YesOrNo(Example, YesOrNo(Example, ps.Exit, B), B)),
 
     pub fn handler(ctx: *Context) @This() {
-        if (ctx.counter_a > 3_000000000) return .exit;
+        if (ctx.counter_a > 30_000_000) return .exit;
         ctx.counter_a += 1;
         return .to_B;
     }
 };
 
 pub const B = union(enum) {
-    to_A: Example(A),
+    to_A: Example(.next, A),
 
     pub fn handler(ctx: *Context) @This() {
         ctx.counter_b += 1;
@@ -64,13 +67,16 @@ pub const B = union(enum) {
 };
 
 pub fn YesOrNo(
+    FSM: fn (ps.Method, type) type,
     Yes: type,
     No: type,
 ) type {
     return union(enum) {
-        yes: Example(Yes),
-        no: Example(No),
-        retry: Example(YesOrNo(Yes, No)),
+        // zig fmt: off
+        yes  : FSM(.next, Yes),
+        no   : FSM(.next, No),
+        retry: FSM(.next, @This()), //YesOrNo(FSM, Yes, No)
+        // zig fmt: on
 
         const stdIn = std.io.getStdIn().reader();
         pub fn handler(ctx: *Context) @This() {

@@ -1,6 +1,5 @@
 const std = @import("std");
-const polystate = @import("polystate");
-const Witness = polystate.Witness;
+const ps = @import("polystate");
 const zgui = @import("zgui");
 const glfw = @import("zglfw");
 const generic = @import("generic.zig");
@@ -13,24 +12,24 @@ pub fn main() !void {
     const window = try generic.init_zgui(gpa, "TodoList");
     defer generic.deinit_zgui(window);
 
-    const StartState = Todo(Main);
+    const StartState = Todo(.next, Main);
     // -------------------------------------
-    var graph = polystate.Graph.init;
+    var graph = ps.Graph.init;
     graph.generate(gpa, StartState);
     std.debug.print("{}\n", .{graph});
     // -------------------------------------
 
     var ctx = Context.init(gpa, "TodoList", window);
 
-    const Runner = polystate.Runner(20, false, StartState);
-    var curr_id: ?Runner.StateId = Runner.fsm_state_to_state_id(StartState);
+    const Runner = ps.Runner(20, false, StartState);
+    var curr_id: ?Runner.StateId = Runner.state_to_id(Main);
     while (curr_id) |id| {
         generic.clear_and_init(window);
         defer {
             zgui.backend.draw();
             window.swapBuffers();
         }
-        curr_id = Runner.run_conthandler(id, &ctx);
+        curr_id = Runner.run_handler(id, &ctx);
     }
 }
 
@@ -103,18 +102,18 @@ fn enter_fn(ctx: *Context, state: type) void {
     _ = state;
 }
 
-pub fn Todo(state: type) type {
-    return polystate.FSM("Todo", Context, enter_fn, state);
+pub fn Todo(method: ps.Method, state: type) type {
+    return ps.FSM("Todo", .suspendable, Context, enter_fn, method, state);
 }
 
 pub const Modify = union(enum) {
-    modify_entry: Todo(Main),
+    modify_entry: Todo(.current, Main),
 
     pub fn zgui_render(ctx: *Context) void {
         ctx.modify.zgui_render();
     }
 
-    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+    pub fn handler(ctx: *Context) @This() {
         const tmp = ctx.modify;
 
         const idx = blk: {
@@ -130,18 +129,18 @@ pub const Modify = union(enum) {
             .id = tmp.id,
         };
         ctx.update(entry) catch unreachable;
-        return .{ .current = .modify_entry };
+        return .modify_entry;
     }
 };
 
 pub const Add = union(enum) {
-    add_entry: Todo(Main),
+    add_entry: Todo(.current, Main),
 
     pub fn zgui_render(ctx: *Context) void {
         ctx.add.zgui_render();
     }
 
-    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+    pub fn handler(ctx: *Context) @This() {
         const tmp = ctx.add;
 
         const idx = blk: {
@@ -157,36 +156,37 @@ pub const Add = union(enum) {
             .id = ctx.fresh_id(),
         };
         ctx.update(entry) catch unreachable;
-        return .{ .current = .add_entry };
+        return .add_entry;
     }
 };
 
 pub fn AreYouSure(yes: type, no: type) type {
-    return generic.AreYouSure(Todo, Context, generic.zgui_are_you_sure_genMsg, yes, no);
+    return generic.AreYouSure(Todo, yes, no);
 }
 
 pub fn Action(mst: type, jst: type) type {
-    return generic.Action(Todo, Context, generic.zgui_action_genMsg, mst, jst);
+    return generic.Action(Todo, mst, jst);
 }
-pub const Exit = polystate.Exit;
+pub const Exit = ps.Exit;
 
 pub const Main = union(enum) {
     // zig fmt: off
-    exit             : Todo(AreYouSure(Exit, Main)),
-    add              : Todo(Action(Add, Add)),
-    modify           : Todo(Action(Modify, Modify)), // = .{}, id: i32 },
-    modify_action    : Todo(Action(Action(Exit, Exit), Main)),
-    modify_areYouSure: Todo(Action(AreYouSure(Exit, Exit), Main)),
+    exit             : Todo(.next, AreYouSure(AreYouSure(Exit, Main), Main)),
+    add              : Todo(.next, Action(Add, Add)),
+    modify           : Todo(.next, Action(Modify, Modify)),
+    modify_action    : Todo(.next, Action(Action(Exit, Exit), Main)),
+    modify_areYouSure: Todo(.next, Action(AreYouSure(Exit, Exit), Main)),
+    no_trasition     : Todo(.next, @This()),
     // zig fmt: on
 
-    pub fn conthandler(ctx: *Context) polystate.NextState(@This()) {
+    pub fn handler(ctx: *Context) @This() {
         const window = ctx.window;
         var buf: [30:0]u8 = @splat(0);
 
         if (window.shouldClose() or
             window.getKey(.q) == .press or
             window.getKey(.escape) == .press)
-            return .{ .next = .exit };
+            return .exit;
 
         _ = zgui.begin("main", .{ .flags = .{
             .no_collapse = true,
@@ -197,19 +197,19 @@ pub const Main = union(enum) {
         defer zgui.end();
 
         if (zgui.button("Exit", .{})) {
-            return .{ .next = .exit };
+            return .exit;
         }
 
         if (zgui.button("Add", .{})) {
-            return .{ .next = .add };
+            return .add;
         }
 
         if (zgui.button("Modify Action", .{})) {
-            return .{ .next = .modify_action };
+            return .modify_action;
         }
 
         if (zgui.button("Modify Are You Sure", .{})) {
-            return .{ .next = .modify_areYouSure };
+            return .modify_areYouSure;
         }
 
         _ = zgui.beginTable("TodoList", .{
@@ -236,7 +236,10 @@ pub const Main = union(enum) {
                 "Delete ##{d}",
                 .{entry.key_ptr.*},
             ) catch unreachable;
-            if (zgui.button(d_name, .{})) ctx.delete(entry.key_ptr.*) catch unreachable;
+            if (zgui.button(d_name, .{})) {
+                ctx.delete(entry.key_ptr.*) catch unreachable;
+                return .no_trasition;
+            }
             _ = zgui.tableNextColumn();
             const m_name = std.fmt.bufPrintZ(
                 &buf,
@@ -253,7 +256,7 @@ pub const Main = union(enum) {
                     ctx.modify.title[i] = vv;
                 }
 
-                return .{ .next = .modify };
+                return .modify;
             }
         }
         return .no_trasition;
