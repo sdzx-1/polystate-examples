@@ -56,7 +56,7 @@ pub fn AreYouSure(yes: type, no: type) type {
 
 pub const Ready = union(enum) {
     insert_card: Atm(.next, CheckPin(Session, CheckPin(Session, CheckPin(Session, Ready)))),
-    exit: Atm(.current, AreYouSure(AreYouSure(ps.Exit, Ready), Ready)),
+    exit: Atm(.next, AreYouSure(AreYouSure(ps.Exit, Ready), Ready)),
     no_trasition: Atm(.next, @This()),
 
     pub fn handler(ctx: *Context) @This() {

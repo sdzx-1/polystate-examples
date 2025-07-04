@@ -47,7 +47,7 @@ fn enter_fn(
 }
 
 pub const A = union(enum) {
-    to_B: Example(.current, B),
+    to_B: Example(.next, B),
     exit: Example(.next, YesOrNo(Example, YesOrNo(Example, ps.Exit, B), B)),
 
     pub fn handler(ctx: *Context) @This() {

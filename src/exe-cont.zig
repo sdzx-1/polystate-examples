@@ -43,7 +43,7 @@ fn enter_fn(
 
 pub const A = union(enum) {
     // zig fmt: off
-    exit : Example(.current, ps.Exit),
+    exit : Example(.next, ps.Exit),
     to_B : Example(.next   , B),
     to_B1: Example(.current, B),
     // zig fmt: on
