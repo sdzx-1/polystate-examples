@@ -18,17 +18,19 @@ pub fn main() anyerror!void {
 
     var graph = ps.Graph.init;
     graph.generate(gpa, StateReady);
-    std.debug.print("{}\n", .{graph});
+
+    const dot_file = try std.fs.cwd().createFile("t.dot", .{});
+    try graph.print_graphviz(dot_file.writer());
 
     const Runner = ps.Runner(20, true, StateReady);
-    var curr_id: ?Runner.StateId = Runner.state_to_id(Ready);
+    var curr_id: ?Runner.StateId = Runner.idFromState(Ready);
     while (curr_id) |id| {
         generic.clear_and_init(window);
         defer {
             zgui.backend.draw();
             window.swapBuffers();
         }
-        curr_id = Runner.run_handler(id, &ctx);
+        curr_id = Runner.runHandler(id, &ctx);
     }
 }
 

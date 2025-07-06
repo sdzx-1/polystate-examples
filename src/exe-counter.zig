@@ -9,16 +9,17 @@ pub fn main() !void {
     var graph = ps.Graph.init;
     graph.generate(gpa, StateA);
 
-    std.debug.print("{}\n", .{graph});
+    const dot_file = try std.fs.cwd().createFile("t.dot", .{});
+    try graph.print_graphviz(dot_file.writer());
 
     std.debug.print("----------------------------\n", .{});
 
     var ctx: Context = .{};
     const Runner = ps.Runner(20, true, StateA);
-    var curr_id: ?Runner.StateId = Runner.state_to_id(A);
+    var curr_id: ?Runner.StateId = Runner.idFromState(A);
 
     while (curr_id) |id| {
-        curr_id = Runner.run_handler(id, &ctx);
+        curr_id = Runner.runHandler(id, &ctx);
     }
 
     std.debug.print("ctx: {any}\n", .{ctx});

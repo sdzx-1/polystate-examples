@@ -16,20 +16,22 @@ pub fn main() !void {
     // -------------------------------------
     var graph = ps.Graph.init;
     graph.generate(gpa, StartState);
-    std.debug.print("{}\n", .{graph});
+
+    const dot_file = try std.fs.cwd().createFile("t.dot", .{});
+    try graph.print_graphviz(dot_file.writer());
     // -------------------------------------
 
     var ctx = Context.init(gpa, "TodoList", window);
 
     const Runner = ps.Runner(20, false, StartState);
-    var curr_id: ?Runner.StateId = Runner.state_to_id(Main);
+    var curr_id: ?Runner.StateId = Runner.idFromState(Main);
     while (curr_id) |id| {
         generic.clear_and_init(window);
         defer {
             zgui.backend.draw();
             window.swapBuffers();
         }
-        curr_id = Runner.run_handler(id, &ctx);
+        curr_id = Runner.runHandler(id, &ctx);
     }
 }
 
