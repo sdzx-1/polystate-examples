@@ -9,11 +9,12 @@ pub fn main() !void {
 
     const StateA = Example(.next, A);
 
-    var graph = polystate.Graph.init;
-
-    graph.generate(gpa, StateA);
+    const graph = try polystate.Graph.initWithFsm(gpa, StateA, 20);
     const dot_file = try std.fs.cwd().createFile("t.dot", .{});
-    try graph.print_graphviz(dot_file.writer());
+    try graph.generateDot(dot_file.writer());
+
+    const mermaid_file = try std.fs.cwd().createFile("t.mmd", .{});
+    try graph.generateMermaid(mermaid_file.writer());
 
     var ctx: Context = .{ .a = 0, .b = 0 };
     const Runner = polystate.Runner(20, true, StateA);

@@ -14,11 +14,13 @@ pub fn main() !void {
 
     const StartState = Todo(.next, Main);
     // -------------------------------------
-    var graph = ps.Graph.init;
-    graph.generate(gpa, StartState);
+    const graph = try ps.Graph.initWithFsm(gpa, StartState, 20);
 
     const dot_file = try std.fs.cwd().createFile("t.dot", .{});
-    try graph.print_graphviz(dot_file.writer());
+    try graph.generateDot(dot_file.writer());
+
+    const mermaid_file = try std.fs.cwd().createFile("t.mmd", .{});
+    try graph.generateMermaid(mermaid_file.writer());
     // -------------------------------------
 
     var ctx = Context.init(gpa, "TodoList", window);

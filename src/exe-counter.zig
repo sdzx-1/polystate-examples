@@ -6,11 +6,13 @@ pub fn main() !void {
     const gpa = gpa_instance.allocator();
 
     const StateA = Example(.next, A);
-    var graph = ps.Graph.init;
-    graph.generate(gpa, StateA);
+    var graph = try ps.Graph.initWithFsm(gpa, StateA, 20);
 
     const dot_file = try std.fs.cwd().createFile("t.dot", .{});
-    try graph.print_graphviz(dot_file.writer());
+    try graph.generateDot(dot_file.writer());
+
+    const mermaid_file = try std.fs.cwd().createFile("t.mmd", .{});
+    try graph.generateMermaid(mermaid_file.writer());
 
     std.debug.print("----------------------------\n", .{});
 
