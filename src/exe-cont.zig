@@ -42,6 +42,8 @@ fn enter_fn(
     std.debug.print("ctx: {any}\n", .{ctx.*});
 }
 
+pub const EnterFsmState = Example(.current, A);
+
 pub const A = union(enum) {
     // zig fmt: off
     exit : Example(.next, ps.Exit),

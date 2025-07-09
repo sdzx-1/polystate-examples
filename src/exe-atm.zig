@@ -50,6 +50,8 @@ pub const Context = struct {
     }
 };
 
+pub const EnterFsmState = Atm(.current, Ready);
+
 pub fn Atm(meth: ps.Method, Current: type) type {
     return ps.FSM("Atm", .suspendable, Context, null, meth, Current);
 }

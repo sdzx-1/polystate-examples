@@ -39,6 +39,8 @@ pub fn Example(method: ps.Method, Current: type) type {
     return ps.FSM("Counter", .suspendable, Context, enter_fn, method, Current);
 }
 
+pub const EnterFsmState = Example(.current, A);
+
 fn enter_fn(
     ctx: *Context,
     Curr: type,

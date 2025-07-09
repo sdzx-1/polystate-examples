@@ -110,6 +110,8 @@ pub fn Todo(method: ps.Method, state: type) type {
     return ps.FSM("Todo", .suspendable, Context, enter_fn, method, state);
 }
 
+pub const EnterFsmState = Todo(.current, Main);
+
 pub const Modify = union(enum) {
     modify_entry: Todo(.current, Main),
 
