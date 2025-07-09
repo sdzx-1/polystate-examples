@@ -1,5 +1,5 @@
 const std = @import("std");
-const generateGraph = @import("polystate").generateGraph;
+const addInstallGraphFile = @import("polystate").addInstallGraphFile;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -46,7 +46,9 @@ pub fn build(b: *std.Build) void {
             });
 
             //generate state graph
-            generateGraph(b, exe_name, exe_mod, .graphviz, polystate, target);
+            const install_graph_file = addInstallGraphFile(b, exe_name, exe_mod, 100, .graphviz, polystate, target, .{ .custom = "graphs" });
+
+            b.getInstallStep().dependOn(&install_graph_file.step);
 
             const exe = b.addExecutable(.{
                 .name = exe_name,
