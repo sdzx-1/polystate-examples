@@ -14,17 +14,8 @@ pub fn main() anyerror!void {
     defer generic.deinit_zgui(window);
 
     var ctx = Context.init(window);
-    const StateReady = Atm(.next, Ready);
 
-    const graph = try ps.Graph.initWithFsm(gpa, StateReady, 20);
-
-    const dot_file = try std.fs.cwd().createFile("t.dot", .{});
-    try graph.generateDot(dot_file.writer());
-
-    const mermaid_file = try std.fs.cwd().createFile("t.mmd", .{});
-    try graph.generateMermaid(mermaid_file.writer());
-
-    const Runner = ps.Runner(20, true, StateReady);
+    const Runner = ps.Runner(20, true, EnterFsmState);
     var curr_id: ?Runner.StateId = Runner.idFromState(Ready);
     while (curr_id) |id| {
         generic.clear_and_init(window);
@@ -49,6 +40,8 @@ pub const Context = struct {
         return .{ .window = win };
     }
 };
+
+pub const EnterFsmState = Atm(.next, Ready);
 
 pub fn Atm(meth: ps.Method, Current: type) type {
     return ps.FSM("Atm", .suspendable, Context, null, meth, Current);

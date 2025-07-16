@@ -12,20 +12,9 @@ pub fn main() !void {
     const window = try generic.init_zgui(gpa, "TodoList");
     defer generic.deinit_zgui(window);
 
-    const StartState = Todo(.next, Main);
-    // -------------------------------------
-    const graph = try ps.Graph.initWithFsm(gpa, StartState, 20);
-
-    const dot_file = try std.fs.cwd().createFile("t.dot", .{});
-    try graph.generateDot(dot_file.writer());
-
-    const mermaid_file = try std.fs.cwd().createFile("t.mmd", .{});
-    try graph.generateMermaid(mermaid_file.writer());
-    // -------------------------------------
-
     var ctx = Context.init(gpa, "TodoList", window);
 
-    const Runner = ps.Runner(20, false, StartState);
+    const Runner = ps.Runner(20, false, EnterFsmState);
     var curr_id: ?Runner.StateId = Runner.idFromState(Main);
     while (curr_id) |id| {
         generic.clear_and_init(window);
@@ -105,6 +94,8 @@ fn enter_fn(ctx: *Context, state: type) void {
     // std.debug.print("{s}\n", .{@typeName(state)});
     _ = state;
 }
+
+pub const EnterFsmState = Todo(.next, Main);
 
 pub fn Todo(method: ps.Method, state: type) type {
     return ps.FSM("Todo", .suspendable, Context, enter_fn, method, state);

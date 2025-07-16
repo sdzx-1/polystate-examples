@@ -2,22 +2,8 @@ const std = @import("std");
 const ps = @import("polystate");
 
 pub fn main() !void {
-    var gpa_instance = std.heap.GeneralPurposeAllocator(.{}){};
-    const gpa = gpa_instance.allocator();
-
-    const StateA = Example(.next, A);
-    var graph = try ps.Graph.initWithFsm(gpa, StateA, 20);
-
-    const dot_file = try std.fs.cwd().createFile("t.dot", .{});
-    try graph.generateDot(dot_file.writer());
-
-    const mermaid_file = try std.fs.cwd().createFile("t.mmd", .{});
-    try graph.generateMermaid(mermaid_file.writer());
-
-    std.debug.print("----------------------------\n", .{});
-
     var ctx: Context = .{};
-    const Runner = ps.Runner(20, true, StateA);
+    const Runner = ps.Runner(20, true, EnterFsmState);
     var curr_id: ?Runner.StateId = Runner.idFromState(A);
 
     while (curr_id) |id| {
@@ -33,6 +19,8 @@ pub const Context = struct {
     counter_b: i64 = 0,
     buf: [10]u8 = @splat(0),
 };
+
+pub const EnterFsmState = Example(.next, A);
 
 ///Example
 pub fn Example(method: ps.Method, Current: type) type {

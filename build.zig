@@ -1,4 +1,5 @@
 const std = @import("std");
+const addInstallGraphFile = @import("polystate").addInstallGraphFile;
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -43,6 +44,11 @@ pub fn build(b: *std.Build) void {
                     .{ .name = "raygui", .module = raylib_dep.module("raygui") },
                 },
             });
+
+            //generate state graph
+            const install_graph_file = addInstallGraphFile(b, exe_name, exe_mod, 100, .graphviz, polystate, target, .{ .custom = "graphs" });
+
+            b.getInstallStep().dependOn(&install_graph_file.step);
 
             const exe = b.addExecutable(.{
                 .name = exe_name,
