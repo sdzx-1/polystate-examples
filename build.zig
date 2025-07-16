@@ -47,8 +47,10 @@ pub fn build(b: *std.Build) void {
 
             //generate state graph
             const install_graph_file = addInstallGraphFile(b, exe_name, exe_mod, 100, .graphviz, polystate, target, .{ .custom = "graphs" });
+            const install_mermaid_file = addInstallGraphFile(b, exe_name, exe_mod, 100, .mermaid, polystate, target, .{ .custom = "graphs" });
 
             b.getInstallStep().dependOn(&install_graph_file.step);
+            b.getInstallStep().dependOn(&install_mermaid_file.step);
 
             const exe = b.addExecutable(.{
                 .name = exe_name,
