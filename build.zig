@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     // zig fmt: off
-    const polystate  = b.dependency("polystate",  .{.target = target, .optimize = optimize});
+    const polystate  = b.dependency("polystate",  .{.target = target, .optimize = optimize}).module("root");
     const zopengl    = b.dependency("zopengl",    .{.target = target});
     const zglfw      = b.dependency("zglfw",      .{.target = target, .optimize = optimize});
     const zgui       = b.dependency("zgui",       .{.target = target, .optimize = optimize, .backend = .glfw_opengl3,});
@@ -36,7 +36,7 @@ pub fn build(b: *std.Build) void {
                 .target = target,
                 .optimize = optimize,
                 .imports = &.{
-                    .{ .name = "polystate", .module = polystate.module("root") },
+                    .{ .name = "polystate", .module = polystate },
                     .{ .name = "zglfw", .module = zglfw.module("root") },
                     .{ .name = "zopengl", .module = zopengl.module("root") },
                     .{ .name = "zgui", .module = zgui.module("root") },
